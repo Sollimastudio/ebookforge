@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -8,51 +8,115 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import Placeholder from '@tiptap/extension-placeholder';
 import Typography from '@tiptap/extension-typography';
+import Highlight from '@tiptap/extension-highlight';
+import TextAlign from '@tiptap/extension-text-align';
+import Color from '@tiptap/extension-color';
+import TextStyle from '@tiptap/extension-text-style';
+import Link from '@tiptap/extension-link';
+import Subscript from '@tiptap/extension-subscript';
+import Superscript from '@tiptap/extension-superscript';
 import { Toolbar } from './Toolbar';
+import { useEbook } from '../../context/EbookContext';
 
 export const EbookEditor = () => {
+  const { activeProject, updateProjectContent } = useEbook();
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3, 4],
-        },
+        heading: { levels: [1, 2, 3, 4] },
       }),
-      Image.configure({
-        inline: true,
-        allowBase64: true, // Let them paste images as base64 for now
-      }),
-      Table.configure({
-        resizable: true,
-      }),
+      Image.configure({ inline: false, allowBase64: true }),
+      Table.configure({ resizable: true }),
       TableRow,
       TableHeader,
       TableCell,
       Typography,
-      Placeholder.configure({
-        placeholder: 'Comece a escrever seu Ebook premium aqui...',
-      }),
+      Placeholder.configure({ placeholder: 'Comece a escrever seu Ebook premium aqui...' }),
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Color,
+      TextStyle,
+      Link.configure({ openOnClick: false, HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
+      Subscript,
+      Superscript,
     ],
-    content: `
-      <h1>Meu Novo Ebook</h1>
-      <p>Escreva o <strong>conteúdo</strong> principal do seu ebook aqui. Você pode arrastar imagens, formatar títulos e criar estruturas complexas.</p>
-      <blockquote><p>O sucesso do design depende da elegância da simplicidade.</p></blockquote>
-    `,
+    content: activeProject?.content ?? '',
+    onUpdate: ({ editor }) => {
+      if (!activeProject) return;
+      const html = editor.getHTML();
+      // Debounce save — 800ms after user stops typing
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        updateProjectContent(activeProject.id, html);
+      }, 800);
+    },
     editorProps: {
-      attributes: {
-        class: 'focus:outline-none w-full h-full pb-32',
+      attributes: { class: 'focus:outline-none w-full pb-32' },
+      handleDrop: (view, event) => {
+        const files = event.dataTransfer?.files;
+        if (!files || files.length === 0) return false;
+        const file = files[0];
+        if (!file.type.startsWith('image/')) return false;
+        event.preventDefault();
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const src = ev.target?.result as string;
+          const { schema } = view.state;
+          const node = schema.nodes.image.create({ src });
+          const transaction = view.state.tr.replaceSelectionWith(node);
+          view.dispatch(transaction);
+        };
+        reader.readAsDataURL(file);
+        return true;
+      },
+      handlePaste: (_view, event) => {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+        for (const item of Array.from(items)) {
+          if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (!file) continue;
+            event.preventDefault();
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const src = ev.target?.result as string;
+              editor?.chain().focus().setImage({ src }).run();
+            };
+            reader.readAsDataURL(file);
+            return true;
+          }
+        }
+        return false;
       },
     },
   });
 
+  // When active project changes, update editor content
+  const activeProjectId = activeProject?.id;
+  const activeProjectContent = activeProject?.content;
+
+  useEffect(() => {
+    if (!editor || !activeProject) return;
+    const currentHTML = editor.getHTML();
+    if (currentHTML !== activeProjectContent) {
+      editor.commands.setContent(activeProjectContent ?? '', false);
+    }
+  }, [activeProjectId]); // Only re-run when project switches
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
+
   return (
-    <div className="w-full h-full overflow-y-auto pt-6 px-4 md:px-8 custom-scrollbar">
-      <div className="max-w-4xl mx-auto flex flex-col h-full relative">
-        <Toolbar editor={editor} />
-        
-        <div className="glass-panel flex-1 rounded-2xl bg-bg-color/40 shadow-xl overflow-hidden mt-2 relative">
-          <EditorContent editor={editor} className="h-full" />
-        </div>
+    <div className="editor-wrapper">
+      <Toolbar editor={editor} />
+      <div className="editor-paper" id="ebook-content-area">
+        <EditorContent editor={editor} />
       </div>
     </div>
   );
