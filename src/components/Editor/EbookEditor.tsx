@@ -16,6 +16,7 @@ import Link from '@tiptap/extension-link';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import { Toolbar } from './Toolbar';
+import { StatisticsPanel } from '../Forge/StatisticsPanel';
 import { useEbook } from '../../context/EbookContext';
 
 export const EbookEditor = () => {
@@ -115,8 +116,15 @@ export const EbookEditor = () => {
   return (
     <div className="editor-wrapper">
       <Toolbar editor={editor} />
-      <div className="editor-paper" id="ebook-content-area">
-        <EditorContent editor={editor} />
+      <div className="editor-main-layout">
+        <div className="editor-paper" id="ebook-content-area">
+          <EditorContent editor={editor} />
+        </div>
+        {activeProject && (
+          <div className="editor-stats-sidebar">
+            <StatisticsPanel content={activeProject.content} />
+          </div>
+        )}
       </div>
     </div>
   );
