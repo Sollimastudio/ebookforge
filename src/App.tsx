@@ -54,7 +54,7 @@ ${activeProject.content}
       const editorEl = document.getElementById('ebook-content-area');
       if (!editorEl) { alert('Conteúdo não encontrado.'); return; }
 
-      // Overlay de progresso premium
+      // Overlay de progresso
       const notice = document.createElement('div');
       notice.className = 'export-notice-overlay';
       notice.innerHTML = `
@@ -69,15 +69,29 @@ ${activeProject.content}
       await new Promise(r => setTimeout(r, 500));
 
       const canvas = await html2canvas(editorEl, {
-        scale: 2.5, // Resolução superior
+        scale: 2.5,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
-        windowWidth: 850, // Forçar largura de página padrão para consistência
+        windowWidth: 850,
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 0.90);
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pdf = new jsPDF({ 
+        orientation: 'portrait', 
+        unit: 'mm', 
+        format: 'a4',
+        compress: true
+      });
+      
+      // Adicionar metadados
+      pdf.setProperties({
+        title: activeProject.title,
+        subject: 'Ebook criado com EbookForge',
+        author: 'EbookForge',
+        keywords: 'ebook, premium, ai',
+        creator: 'EbookForge Studio'
+      });
       
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -87,11 +101,9 @@ ${activeProject.content}
       let heightLeft = imgHeight;
       let position = 0;
 
-      // Adicionar primeira página
       pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
       heightLeft -= pageHeight;
 
-      // Adicionar páginas subsequentes se necessário
       while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
