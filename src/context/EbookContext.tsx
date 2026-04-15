@@ -36,6 +36,8 @@ interface EbookContextType {
   forgeEbookFromText: (text: string) => Promise<void>;
   cancelForge: () => void;
   resetForge: () => void;
+  importSingleProject: (project: EbookProject) => void;
+  importMultipleProjects: (projects: EbookProject[]) => void;
 }
 
 const EbookContext = createContext<EbookContextType | undefined>(undefined);
@@ -363,6 +365,20 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const importSingleProject = useCallback((project: EbookProject) => {
+    setProjects(prev => [...prev, project]);
+    setActiveProjectId(project.id);
+    console.log(`✅ Projeto importado: ${project.title}`);
+  }, []);
+
+  const importMultipleProjects = useCallback((newProjects: EbookProject[]) => {
+    setProjects(prev => [...prev, ...newProjects]);
+    if (newProjects.length > 0) {
+      setActiveProjectId(newProjects[0].id);
+    }
+    console.log(`✅ ${newProjects.length} projetos importados`);
+  }, []);
+
   const activeProject = projects.find(p => p.id === activeProjectId) ?? projects[0] ?? null;
 
   return (
@@ -386,6 +402,8 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       forgeEbookFromText,
       cancelForge,
       resetForge,
+      importSingleProject,
+      importMultipleProjects,
     }}>
       {children}
     </EbookContext.Provider>

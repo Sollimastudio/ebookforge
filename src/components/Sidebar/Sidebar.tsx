@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
 import { useEbook, type Theme, type EbookProject } from '../../context/EbookContext';
+import { exportProjectToFile, exportProjectsToFile, importProjectFromFile, importBackupFile } from '../../utils/projectIO';
 import {
   BookOpen, Plus, Trash2, Pencil, Check, X,
   Palette, Sun, Moon, Sparkles, Sunset,
-  Download, FileText, ChevronRight, Key, LayoutDashboard, AlertCircle
+  Download, FileText, ChevronRight, Key, LayoutDashboard, AlertCircle, Upload
 } from 'lucide-react';
 
 const THEMES: { id: Theme; label: string; icon: React.ReactNode; preview: string }[] = [
@@ -23,23 +24,71 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) =
     projects, activeProjectId, activeProject, setActiveProjectId, 
     createProject, deleteProject, renameProject, 
     activeTheme, setActiveTheme,
-    apiKey, setApiKey, forgeEbookFromText, forgeStatus, cancelForge 
+    apiKey, setApiKey, forgeEbookFromText, forgeStatus, cancelForge,
+    importSingleProject, importMultipleProjects
   } = useEbook();
   
   const [renamingId, setRenamingId] = useState<string | null>(null);
-
-  const handleForge = () => {
-    if (!activeProject) return;
-    forgeEbookFromText(activeProject.content);
-  };
   const [renameValue, setRenameValue] = useState('');
   const [showThemes, setShowThemes] = useState(false);
   const [showApiInput, setShowApiInput] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
+  const importBackupFileRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const handleNew = () => {
     createProject(`Ebook ${projects.length + 1}`);
   };
+
+  const handleForge = () => {
+    if (!activeProject) return;
+    forgeEbookFromText(activeProject.content);
+  };
+
+  const handleImportProject = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const project = await importProjectFromFile(file);
+      importSingleProject(project);
+      alert(`✅ Projeto "${project.title}" importado com sucesso!`);
+    } catch (err) {
+      alert(`❌ Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`);
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const importedProjects = await importBackupFile(file);
+      importMultipleProjects(importedProjects);
+      alert(`✅ ${importedProjects.length} projetos importados do backup!`);
+    } catch (err) {
+      alert(`❌ Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`);
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleExportCurrent = () => {
+    if (!activeProject) {
+      alert('Nenhum projeto ativo para exportar.');
+      return;
+    }
+    exportProjectToFile(activeProject);
+  };
+
+  const handleExportAllProjects = () => {
+    if (projects.length === 0) {
+      alert('Nenhum projeto para exportar.');
+      return;
+    }
+    exportProjectsToFile(projects);
+  };
+
 
   const startRename = (p: EbookProject) => {
     setRenamingId(p.id);
@@ -226,7 +275,62 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) =
           <span>HTML</span>
         </button>
       </div>
+
+      {/* Import & Sync */}
+      <div className="sidebar-divider" />
+      <div className="sidebar-section-label"><Upload size={12} /> Importar & Sincronizar</div>
+      <div className="export-btns">
+        <button 
+          className="btn-export" 
+          onClick={() => importFileRef.current?.click()}
+          title="Importar um único projeto .ebookforge"
+        >
+          <Upload size={14} />
+          <span>Importar Projeto</span>
+        </button>
+        <button 
+          className="btn-export" 
+          onClick={() => importBackupFileRef.current?.click()}
+          title="Importar backup com múltiplos projetos"
+        >
+          <Upload size={14} />
+          <span>Importar Backup</span>
+        </button>
+        <button 
+          className="btn-export" 
+          onClick={handleExportCurrent}
+          disabled={!activeProjectId}
+          title="Baixar projeto atual"
+        >
+          <Download size={14} />
+          <span>Exportar Este</span>
+        </button>
+        <button 
+          className="btn-export" 
+          onClick={handleExportAllProjects}
+          disabled={projects.length === 0}
+          title="Fazer backup de todos os projetos"
+        >
+          <Download size={14} />
+          <span>Backup Completo</span>
+        </button>
+      </div>
+
+      {/* Hidden File Inputs */}
+      <input 
+        ref={importFileRef}
+        type="file" 
+        accept=".ebookforge,.json" 
+        onChange={handleImportProject}
+        style={{ display: 'none' }}
+      />
+      <input 
+        ref={importBackupFileRef}
+        type="file" 
+        accept=".json" 
+        onChange={handleImportBackup}
+        style={{ display: 'none' }}
+      />
     </aside>
   );
 };
-
