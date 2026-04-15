@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useEbook, Theme, EbookProject } from '../../context/EbookContext';
+import { useState, useRef } from 'react';
+import { useEbook, type Theme, type EbookProject } from '../../context/EbookContext';
 import {
   BookOpen, Plus, Trash2, Pencil, Check, X,
   Palette, Sun, Moon, Sparkles, Sunset,
@@ -20,13 +20,18 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) => {
   const { 
-    projects, activeProjectId, setActiveProjectId, 
+    projects, activeProjectId, activeProject, setActiveProjectId, 
     createProject, deleteProject, renameProject, 
     activeTheme, setActiveTheme,
-    apiKey, setApiKey 
+    apiKey, setApiKey, forgeEbookFromText, forgeStatus, cancelForge 
   } = useEbook();
   
   const [renamingId, setRenamingId] = useState<string | null>(null);
+
+  const handleForge = () => {
+    if (!activeProject) return;
+    forgeEbookFromText(activeProject.content);
+  };
   const [renameValue, setRenameValue] = useState('');
   const [showThemes, setShowThemes] = useState(false);
   const [showApiInput, setShowApiInput] = useState(false);
@@ -202,6 +207,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) =
       {/* Export */}
       <div className="sidebar-section-label"><Download size={12} /> Exportar</div>
       <div className="export-btns">
+        <button className="btn-export" onClick={handleForge} disabled={!activeProjectId || !apiKey || forgeStatus !== 'idle'}>
+          <Sparkles size={14} />
+          <span>Forjar Ebook</span>
+        </button>
+        {forgeStatus !== 'idle' && (
+          <button className="btn-export cancel" onClick={cancelForge}>
+            <X size={14} />
+            <span>Cancelar</span>
+          </button>
+        )}
         <button className="btn-export" onClick={onExportPDF} disabled={!activeProjectId}>
           <FileText size={14} />
           <span>PDF</span>

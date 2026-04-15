@@ -1,8 +1,8 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
-import Table from '@tiptap/extension-table';
+import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
@@ -11,7 +11,7 @@ import Typography from '@tiptap/extension-typography';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
 import Color from '@tiptap/extension-color';
-import TextStyle from '@tiptap/extension-text-style';
+import { TextStyle } from '@tiptap/extension-text-style';
 import Link from '@tiptap/extension-link';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
@@ -101,7 +101,7 @@ export const EbookEditor = () => {
     if (!editor || !activeProject) return;
     const currentHTML = editor.getHTML();
     if (currentHTML !== activeProjectContent) {
-      editor.commands.setContent(activeProjectContent ?? '', false);
+      editor.commands.setContent(activeProjectContent ?? '');
     }
   }, [activeProjectId]); // Only re-run when project switches
 

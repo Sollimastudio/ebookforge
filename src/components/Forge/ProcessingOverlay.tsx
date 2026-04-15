@@ -1,6 +1,5 @@
-import React from 'react';
-import { Sparkles, Loader2 } from 'lucide-react';
-import { useEbook, ForgeStatus } from '../../context/EbookContext';
+import { Sparkles, Loader2, X } from 'lucide-react';
+import { useEbook, type ForgeStatus } from '../../context/EbookContext';
 
 const statusMessages: Record<ForgeStatus, string> = {
   idle: '',
@@ -12,7 +11,7 @@ const statusMessages: Record<ForgeStatus, string> = {
 };
 
 export const ProcessingOverlay = () => {
-  const { forgeStatus, forgeProgress } = useEbook();
+  const { forgeStatus, forgeProgress, cancelForge } = useEbook();
 
   if (forgeStatus === 'idle' || forgeStatus === 'error') return null;
 
@@ -38,6 +37,14 @@ export const ProcessingOverlay = () => {
           
           <div className="processing-tips">
             <p>Dica: Nossa IA de elite está reescrevendo seu texto para garantir o máximo valor de venda.</p>
+            <button 
+              onClick={cancelForge}
+              className="cancel-btn"
+              title="Cancelar operação"
+            >
+              <X size={16} />
+              Cancelar
+            </button>
           </div>
         </div>
       </div>

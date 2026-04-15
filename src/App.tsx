@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { EbookProvider, useEbook } from './context/EbookContext';
 import { EbookEditor } from './components/Editor/EbookEditor';
 import { Sidebar } from './components/Sidebar/Sidebar';
@@ -7,8 +7,7 @@ import { ProcessingOverlay } from './components/Forge/ProcessingOverlay';
 import './index.css';
 
 function AppInner() {
-  const { activeProject, activeTheme, forgeStatus } = useEbook();
-  const contentAreaRef = useRef<HTMLDivElement>(null);
+  const { activeProject, activeTheme } = useEbook();
 
   const handleExportHTML = useCallback(() => {
     if (!activeProject) return;

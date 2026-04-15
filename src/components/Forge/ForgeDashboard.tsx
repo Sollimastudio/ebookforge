@@ -3,7 +3,7 @@ import { Upload, BookOpen, Sparkles, AlertCircle } from 'lucide-react';
 import { useEbook } from '../../context/EbookContext';
 
 export const ForgeDashboard = () => {
-  const { forgeEbook, forgeStatus, forgeError, resetForge } = useEbook();
+  const { forgeEbook, forgeStatus, forgeError, resetForge, apiKey } = useEbook();
   const [isDragging, setIsDragging] = useState(false);
 
   const handleFile = useCallback((file: File) => {

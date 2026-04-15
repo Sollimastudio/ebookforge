@@ -1,11 +1,11 @@
 import React from 'react';
-import { type Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/react';
 import {
   Bold, Italic, Strikethrough, Heading1, Heading2, Heading3,
   List, ListOrdered, Quote, Minus, Image as ImageIcon,
   Table as TableIcon, Link as LinkIcon, Subscript, Superscript,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  Highlighter, Palette, Code, Undo, Redo,
+  Highlighter, Code, Undo, Redo,
   Lightbulb, AlertTriangle, Info, AlertCircle,
   Type
 } from 'lucide-react';
