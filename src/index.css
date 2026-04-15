@@ -1735,3 +1735,25 @@ body {
   opacity: 0.8;
 }
 
+/* =============================================
+   KEYBOARD SHORTCUTS
+   ============================================= */
+.keyboard-hint {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.keyboard-hint.primary {
+  background: rgba(88, 166, 255, 0.1);
+  border-color: rgba(88, 166, 255, 0.3);
+  color: var(--accent);
+}
+

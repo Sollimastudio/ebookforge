@@ -129,6 +129,30 @@ export const EbookEditor = () => {
     };
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + S para salvar (já auto-salva, mostrar feedback)
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        setIsSaving(true);
+        if (savingTimeoutRef.current) clearTimeout(savingTimeoutRef.current);
+        savingTimeoutRef.current = setTimeout(() => {
+          setIsSaving(false);
+        }, 2000);
+      }
+
+      // Ctrl/Cmd + E para abrir/fechar sumário
+      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        setShowTOC(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className="editor-wrapper">
       <div className="toolbar">
