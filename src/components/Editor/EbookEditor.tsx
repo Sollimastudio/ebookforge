@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -15,13 +15,16 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Link from '@tiptap/extension-link';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
+import { BookMarked } from 'lucide-react';
 import { Toolbar } from './Toolbar';
 import { StatisticsPanel } from '../Forge/StatisticsPanel';
+import { TableOfContentsPanel } from '../Forge/TableOfContentsPanel';
 import { useEbook } from '../../context/EbookContext';
 
 export const EbookEditor = () => {
   const { activeProject, updateProjectContent } = useEbook();
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showTOC, setShowTOC] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -115,7 +118,17 @@ export const EbookEditor = () => {
 
   return (
     <div className="editor-wrapper">
-      <Toolbar editor={editor} />
+      <div className="toolbar">
+        <Toolbar editor={editor} />
+        <div className="toolbar-divider" />
+        <button 
+          onClick={() => setShowTOC(!showTOC)}
+          title="Sumário"
+          className="toolbar-btn"
+        >
+          <BookMarked size={18} />
+        </button>
+      </div>
       <div className="editor-main-layout">
         <div className="editor-paper" id="ebook-content-area">
           <EditorContent editor={editor} />
@@ -126,6 +139,26 @@ export const EbookEditor = () => {
           </div>
         )}
       </div>
+
+      {showTOC && activeProject && (
+        <div className="toc-modal-overlay" onClick={() => setShowTOC(false)}>
+          <div className="toc-modal" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="modal-close"
+              onClick={() => setShowTOC(false)}
+            >
+              ✕
+            </button>
+            <TableOfContentsPanel 
+              content={activeProject.content}
+              onInsertTOC={(html) => {
+                editor?.commands.insertContent(html);
+                setShowTOC(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
