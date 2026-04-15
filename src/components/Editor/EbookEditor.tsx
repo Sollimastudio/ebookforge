@@ -24,7 +24,9 @@ import { useEbook } from '../../context/EbookContext';
 export const EbookEditor = () => {
   const { activeProject, updateProjectContent } = useEbook();
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showTOC, setShowTOC] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -50,6 +52,16 @@ export const EbookEditor = () => {
     onUpdate: ({ editor }) => {
       if (!activeProject) return;
       const html = editor.getHTML();
+      
+      // Show saving indicator for 2 seconds
+      setIsSaving(true);
+      
+      // Clear previous timeout for saving indicator
+      if (savingTimeoutRef.current) clearTimeout(savingTimeoutRef.current);
+      savingTimeoutRef.current = setTimeout(() => {
+        setIsSaving(false);
+      }, 2000);
+      
       // Debounce save — 800ms after user stops typing
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
@@ -109,10 +121,11 @@ export const EbookEditor = () => {
     }
   }, [activeProjectId]); // Only re-run when project switches
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (savingTimeoutRef.current) clearTimeout(savingTimeoutRef.current);
     };
   }, []);
 
@@ -128,6 +141,13 @@ export const EbookEditor = () => {
         >
           <BookMarked size={18} />
         </button>
+        <div className="toolbar-spacer" />
+        {isSaving && (
+          <div className="editor-saving-indicator">
+            <span className="saving-dot"></span>
+            <span>Salvando...</span>
+          </div>
+        )}
       </div>
       <div className="editor-main-layout">
         <div className="editor-paper" id="ebook-content-area">

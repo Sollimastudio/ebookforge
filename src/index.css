@@ -582,6 +582,31 @@ body {
   flex-shrink: 0;
 }
 
+.toolbar-spacer {
+  flex: 1;
+}
+
+.editor-saving-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 500;
+  animation: fadeIn 0.2s ease;
+}
+
+.saving-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1s infinite;
+}
+
 /* Dropdown pickers */
 .toolbar-dropdown-wrap {
   position: relative;
