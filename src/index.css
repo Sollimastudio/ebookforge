@@ -165,12 +165,13 @@ body {
    ============================================= */
 .app-root {
   display: flex;
+  flex-direction: column;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
 }
 
-.main-area {
+.main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -182,19 +183,7 @@ body {
    SIDEBAR
    ============================================= */
 .sidebar {
-  width: 260px;
-  flex-shrink: 0;
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  z-index: 20;
-  padding: 0 0 2rem;
+  display: none;
 }
 
 .sidebar-logo {
@@ -1895,3 +1884,8 @@ body {
   line-height: 1.4;
 }
 
+
+/* =============================================
+   NEW LAYOUT STYLES
+   ============================================= */
+@import './styles-new.css';
