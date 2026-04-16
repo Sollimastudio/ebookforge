@@ -1,7 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
 import { EbookProvider, useEbook } from './context/EbookContext';
-import { TopNav, type NavTab } from './components/Navigation/TopNav';
-import { HomePanel } from './components/Panels/HomePanel';
 import { EbookEditor } from './components/Editor/EbookEditor';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { ForgeDashboard } from './components/Forge/ForgeDashboard';
