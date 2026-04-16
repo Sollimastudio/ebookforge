@@ -5,24 +5,24 @@
 export const GhostwriterPrompts = {
   // Prompt para analisar o manuscrito e criar o blueprint
   CREATE_BLUEPRINT: (text: string) => `
-Você é um Editor Sênior e Estrategista de Conteúdo de uma prestigiada editora de livros de negócios e desenvolvimento pessoal.
-Analise o manuscrito bruto abaixo e crie uma estrutura detalhada (Sumário/Blueprint) para um Ebook de Ultra-Luxo.
-
-O Ebook deve:
-1. Ter uma narrativa fluida, autoritária e transformadora.
-2. Ser dividido em uma jornada lógica (Início, Meio, Transformação e Conclusão).
-3. Transformar dados brutos em insights "diamante" (claros e valiosos).
+Você é um Editor Sênior especializado em ebooks premium.
+Analise o manuscrito abaixo e detecte seu formato: pode ser "dias" (diário/jornada dia a dia), "capítulos" (livro tradicional), "etapas" (processo passo a passo), "lições" (aulas/módulos) ou "seções" (temas/blocos).
 
 MANUSCRITO:
-${text.substring(0, 18000)} ... (truncado se necessário)
+${text.substring(0, 12000)}
 
-INSTRUÇÃO DE SAÍDA:
-Responda APENAS com um formato JSON válido. Não inclua conversas antes ou depois.
+REGRAS CRÍTICAS:
+- Responda APENAS com JSON válido e completo. Zero texto fora do JSON.
+- Máximo 10 capítulos/dias/etapas.
+- "summary" deve ter no máximo 15 palavras.
+- Mantenha o JSON compacto.
+
 {
   "title": "Título Magnético e Curto",
-  "subtitle": "Subtítulo que resolve uma dor específica ou promete um ganho alto",
+  "subtitle": "Subtítulo que promete resultado claro",
+  "format": "dias|capítulos|etapas|lições|seções",
   "chapters": [
-    { "title": "Título do Capítulo", "summary": "Objetivo principal e tom deste capítulo" }
+    { "title": "Título curto", "summary": "Objetivo em até 15 palavras" }
   ]
 }
 `,

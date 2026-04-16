@@ -1,8 +1,47 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { extractTextFromPdf } from '../utils/pdfProcessor';
-import { callOpenRouter } from '../services/openrouter';
+import { callOpenRouter, AVAILABLE_MODELS } from '../services/openrouter';
 import { GhostwriterPrompts } from '../services/prompts';
+
+interface BlueprintData {
+  title: string;
+  subtitle: string;
+  format?: string;
+  chapters: Array<{ title: string; summary: string }>;
+}
+
+function parseBlueprintJson(raw: string): BlueprintData {
+  const start = raw.indexOf('{');
+  if (start === -1) throw new Error('Nenhum JSON encontrado na resposta da IA');
+  const jsonStr = raw.substring(start);
+
+  // Tenta parse direto
+  try { return JSON.parse(jsonStr); } catch { /* segue para reparo */ }
+
+  // Reparo: extrai campos com regex caso o JSON esteja truncado
+  const titleMatch = jsonStr.match(/"title"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  const subtitleMatch = jsonStr.match(/"subtitle"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  const formatMatch = jsonStr.match(/"format"\s*:\s*"([^"]+)"/);
+  const chapters: Array<{ title: string; summary: string }> = [];
+  const re = /\{\s*"title"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"summary"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/g;
+  let m;
+  while ((m = re.exec(jsonStr)) !== null) {
+    chapters.push({ title: m[1], summary: m[2] });
+  }
+
+  if (!titleMatch || chapters.length === 0) {
+    console.error('❌ Resposta bruta da IA:', raw.substring(0, 500));
+    throw new Error(`Estrutura inválida: a IA retornou JSON incompleto (${chapters.length} capítulos extraídos). Tente um modelo maior ou um manuscrito menor.`);
+  }
+
+  return {
+    title: titleMatch[1],
+    subtitle: subtitleMatch?.[1] ?? '',
+    format: formatMatch?.[1],
+    chapters,
+  };
+}
 
 export type Theme = 'obsidian-noir' | 'arctic-white' | 'royal-purple' | 'sunset-warm';
 
@@ -22,6 +61,8 @@ interface EbookContextType {
   activeProject: EbookProject | null;
   activeTheme: Theme;
   apiKey: string;
+  model: string;
+  setModel: (model: string) => void;
   forgeStatus: ForgeStatus;
   forgeProgress: number;
   forgeError: string | null;
@@ -45,6 +86,7 @@ const EbookContext = createContext<EbookContextType | undefined>(undefined);
 const STORAGE_KEY = 'ebookforge_projects';
 const THEME_KEY = 'ebookforge_theme';
 const API_KEY_STORAGE = 'ebookforge_api_key';
+const MODEL_STORAGE = 'ebookforge_model';
 
 const createDefaultProject = (): EbookProject => ({
   id: `ebook_${Date.now()}`,
@@ -85,6 +127,17 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
   const [apiKey, setApiKey] = useState<string>(() => {
     return localStorage.getItem(API_KEY_STORAGE) || '';
   });
+
+  const [model, setModelState] = useState<string>(() => {
+    const saved = localStorage.getItem(MODEL_STORAGE) || '';
+    const valid = AVAILABLE_MODELS.map(m => m.id);
+    return valid.includes(saved) ? saved : 'anthropic/claude-3-haiku';
+  });
+
+  const setModel = (m: string) => {
+    setModelState(m);
+    localStorage.setItem(MODEL_STORAGE, m);
+  };
 
   const [forgeStatus, setForgeStatus] = useState<ForgeStatus>('idle');
   const [forgeProgress, setForgeProgress] = useState(0);
@@ -189,22 +242,19 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       console.log('📝 Gerando blueprint...');
       const blueprintRaw = await callOpenRouter(
         [{ role: 'user', content: GhostwriterPrompts.CREATE_BLUEPRINT(fullText) }],
-        { apiKey, timeout: 180000 } // 3 minutos para blueprint
+        { apiKey, model, timeout: 180000, max_tokens: 2000 }
       );
 
       if (controller.signal.aborted) {
         throw new Error('Operação cancelada');
       }
 
-      let blueprint;
+      let blueprint: BlueprintData;
       try {
-        const jsonMatch = blueprintRaw.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('Formato de resposta inválido');
-        blueprint = JSON.parse(jsonMatch[0]);
-        console.log('✅ Blueprint gerado:', blueprint.title);
-      } catch (e) {
-        console.error('❌ Erro no parsing do blueprint:', blueprintRaw);
-        throw new Error('A IA não conseguiu gerar uma estrutura válida. Tente novamente.');
+        blueprint = parseBlueprintJson(blueprintRaw);
+        console.log('✅ Blueprint gerado:', blueprint.title, `| ${blueprint.chapters.length} capítulos | formato: ${blueprint.format}`);
+      } catch (e: any) {
+        throw new Error(`Erro ao processar resposta da IA: ${e.message}`);
       }
 
       setForgeStatus('writing');
@@ -233,7 +283,7 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
         const chapterContent = await callOpenRouter([
           { role: 'system', content: 'Você é um Ghostwriter de elite. Responda apenas com HTML limpo.' },
           { role: 'user', content: GhostwriterPrompts.REWRITE_CHAPTER(chapter.title, chunk, JSON.stringify(blueprint)) }
-        ], { apiKey, timeout: 120000 }); // 2 minutos por capítulo
+        ], { apiKey, model, timeout: 120000, max_tokens: 6000 });
 
         finalContent += `<div class="chapter-break"></div>${chapterContent}`;
         console.log(`✅ Capítulo ${i + 1} concluído`);
@@ -303,18 +353,15 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       // 2. Criar Blueprint (Estrutura) via IA
       const blueprintRaw = await callOpenRouter(
         [{ role: 'user', content: GhostwriterPrompts.CREATE_BLUEPRINT(fullText) }],
-        { apiKey }
+        { apiKey, model, max_tokens: 2000 }
       );
-      
-      // Extrair JSON do retorno (limpar possíveis textos extras de forma robusta)
-      let blueprint;
+
+      let blueprint: BlueprintData;
       try {
-        const jsonMatch = blueprintRaw.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('Formato de resposta inválido');
-        blueprint = JSON.parse(jsonMatch[0]);
-      } catch (e) {
-        console.error('Erro no parsing do blueprint:', blueprintRaw);
-        throw new Error('A IA não conseguiu gerar uma estrutura válida. Tente novamente.');
+        blueprint = parseBlueprintJson(blueprintRaw);
+        console.log('✅ Blueprint gerado:', blueprint.title, `| ${blueprint.chapters.length} capítulos | formato: ${blueprint.format}`);
+      } catch (e: any) {
+        throw new Error(`Erro ao processar resposta da IA: ${e.message}`);
       }
 
       setForgeStatus('writing');
@@ -338,7 +385,7 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
         const chapterContent = await callOpenRouter([
           { role: 'system', content: 'Você é um Ghostwriter de elite. Responda apenas com HTML limpo.' },
           { role: 'user', content: GhostwriterPrompts.REWRITE_CHAPTER(chapter.title, chunk, JSON.stringify(blueprint)) }
-        ], { apiKey });
+        ], { apiKey, model, max_tokens: 6000 });
 
         finalContent += `<div class="chapter-break"></div>${chapterContent}`;
       }
@@ -388,6 +435,8 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       activeProject,
       activeTheme,
       apiKey,
+      model,
+      setModel,
       forgeStatus,
       forgeProgress,
       forgeError,

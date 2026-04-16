@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useEbook, type Theme, type EbookProject } from '../../context/EbookContext';
 import { exportProjectToFile, exportProjectsToFile, importProjectFromFile, importBackupFile } from '../../utils/projectIO';
+import { AVAILABLE_MODELS } from '../../services/openrouter';
 import {
   BookOpen, Plus, Trash2, Pencil, Check, X,
   Palette, Sun, Moon, Sparkles, Sunset,
@@ -24,7 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) =
     projects, activeProjectId, activeProject, setActiveProjectId, 
     createProject, deleteProject, renameProject, 
     activeTheme, setActiveTheme,
-    apiKey, setApiKey, forgeEbookFromText, forgeStatus, cancelForge,
+    apiKey, setApiKey, model, setModel, forgeEbookFromText, forgeStatus, cancelForge,
     importSingleProject, importMultipleProjects
   } = useEbook();
   
@@ -221,6 +222,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) =
               className="api-input"
             />
             <p className="api-hint">A chave fica salva localmente no seu MacBook.</p>
+            <div className="model-select-wrap">
+              <label className="model-label">Modelo de IA</label>
+              <select
+                className="model-select"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              >
+                {AVAILABLE_MODELS.map(m => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
       </div>

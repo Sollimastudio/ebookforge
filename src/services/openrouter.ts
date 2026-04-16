@@ -7,9 +7,19 @@ export interface OpenRouterConfig {
   apiKey: string;
   model?: string;
   timeout?: number;
+  max_tokens?: number;
 }
 
-const DEFAULT_MODEL = 'anthropic/claude-3.5-sonnet';
+export const AVAILABLE_MODELS = [
+  { id: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku — rápido · barato ✓' },
+  { id: 'anthropic/claude-3.5-haiku-20241022', label: 'Claude 3.5 Haiku — equilibrado ✓' },
+  { id: 'anthropic/claude-3.5-sonnet-20241022', label: 'Claude 3.5 Sonnet — premium ✓' },
+  { id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini — barato · rápido ✓' },
+  { id: 'openai/gpt-4o', label: 'GPT-4o — alta qualidade ✓' },
+  { id: 'google/gemini-flash-1.5', label: 'Gemini Flash 1.5 — muito barato ✓' },
+];
+
+const DEFAULT_MODEL = 'anthropic/claude-3-haiku';
 const DEFAULT_TIMEOUT = 120000; // 2 minutos
 
 /**
@@ -46,7 +56,7 @@ export async function callOpenRouter(
         model: config.model || DEFAULT_MODEL,
         messages: messages,
         temperature: 0.7,
-        max_tokens: 4000, // Limitar tokens para evitar timeouts
+        max_tokens: config.max_tokens ?? 4000,
       }),
       signal: controller.signal,
     });
