@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { extractTextFromPdf } from '../utils/pdfProcessor';
-import { callOpenRouter, DEFAULT_MODEL } from '../services/openrouter';
+import { callOpenRouter, DEFAULT_MODEL, AVAILABLE_MODELS } from '../services/openrouter';
 import { GhostwriterPrompts, type Blueprint, type ContentFormat } from '../services/prompts';
 
 export type Theme = 'obsidian-noir' | 'arctic-white' | 'royal-purple' | 'sunset-warm' | 'forest-green' | 'ocean-blue' | 'rose-pink' | 'midnight-blue' | 'crimson-red' | 'amber-gold' | 'slate-gray';
@@ -136,7 +136,9 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const [selectedModel, setSelectedModelState] = useState<string>(() => {
-    return localStorage.getItem(MODEL_KEY) || DEFAULT_MODEL;
+    const saved = localStorage.getItem(MODEL_KEY) || '';
+    const validIds = AVAILABLE_MODELS.map(m => m.id);
+    return validIds.includes(saved as any) ? saved : DEFAULT_MODEL;
   });
 
   const [forgeStatus, setForgeStatus] = useState<ForgeStatus>('idle');

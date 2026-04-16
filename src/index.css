@@ -1507,6 +1507,31 @@ body {
   margin-top: 4px;
 }
 
+.model-select-wrap {
+  margin-top: 10px;
+}
+
+.model-label {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.model-select {
+  width: 100%;
+  background: var(--bg-3);
+  border: 1px solid var(--accent);
+  color: var(--text-primary);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  outline: none;
+  cursor: pointer;
+}
+
 /* =============================================
    ERROR CARDS
    ============================================= */

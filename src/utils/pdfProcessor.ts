@@ -1,8 +1,8 @@
 import * as pdfjs from 'pdfjs-dist';
-import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Worker local — sem dependência de CDN externo
-pdfjs.GlobalWorkerOptions.workerSrc = PdfWorker;
+// Worker local via Vite ?url — sem dependência de CDN externo
+pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 export interface ExtractedText {
   fullText: string;
