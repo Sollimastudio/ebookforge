@@ -1,10 +1,10 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { extractTextFromPdf } from '../utils/pdfProcessor';
-import { callOpenRouter } from '../services/openrouter';
-import { GhostwriterPrompts } from '../services/prompts';
+import { callOpenRouter, DEFAULT_MODEL, AVAILABLE_MODELS } from '../services/openrouter';
+import { GhostwriterPrompts, type Blueprint, type ContentFormat } from '../services/prompts';
 
-export type Theme = 'obsidian-noir' | 'arctic-white' | 'royal-purple' | 'sunset-warm';
+export type Theme = 'obsidian-noir' | 'arctic-white' | 'royal-purple' | 'sunset-warm' | 'forest-green' | 'ocean-blue' | 'rose-pink' | 'midnight-blue' | 'crimson-red' | 'amber-gold' | 'slate-gray';
 
 export type ForgeStatus = 'idle' | 'parsing' | 'thinking' | 'writing' | 'finished' | 'error';
 
@@ -16,24 +16,34 @@ export interface EbookProject {
   updatedAt: number;
 }
 
+export interface ForgeProgressDetail {
+  phase: string;
+  current: number;
+  total: number;
+  label: string;
+}
+
 interface EbookContextType {
   projects: EbookProject[];
   activeProjectId: string | null;
   activeProject: EbookProject | null;
   activeTheme: Theme;
   apiKey: string;
+  selectedModel: string;
   forgeStatus: ForgeStatus;
   forgeProgress: number;
+  forgeProgressDetail: ForgeProgressDetail | null;
   forgeError: string | null;
   setApiKey: (key: string) => void;
+  setSelectedModel: (model: string) => void;
   setActiveTheme: (theme: Theme) => void;
   createProject: (title: string) => EbookProject;
   deleteProject: (id: string) => void;
   renameProject: (id: string, title: string) => void;
   setActiveProjectId: (id: string) => void;
   updateProjectContent: (id: string, content: string) => void;
-  forgeEbook: (file: File) => Promise<void>;
-  forgeEbookFromText: (text: string) => Promise<void>;
+  forgeEbook: (file: File, theme?: Theme) => Promise<void>;
+  forgeEbookFromText: (text: string, theme?: Theme) => Promise<void>;
   cancelForge: () => void;
   resetForge: () => void;
   importSingleProject: (project: EbookProject) => void;
@@ -45,6 +55,7 @@ const EbookContext = createContext<EbookContextType | undefined>(undefined);
 const STORAGE_KEY = 'ebookforge_projects';
 const THEME_KEY = 'ebookforge_theme';
 const API_KEY_STORAGE = 'ebookforge_api_key';
+const MODEL_KEY = 'ebookforge_model';
 
 const createDefaultProject = (): EbookProject => ({
   id: `ebook_${Date.now()}`,
@@ -53,6 +64,44 @@ const createDefaultProject = (): EbookProject => ({
   createdAt: Date.now(),
   updatedAt: Date.now(),
 });
+
+/**
+ * Divide um texto longo em chunks com sobreposição para contexto.
+ * Garante que cada capítulo receba material relevante do manuscrito.
+ */
+function chunkText(text: string, numChunks: number): string[] {
+  if (numChunks <= 0) return [text];
+  const totalLen = text.length;
+  const baseSize = Math.floor(totalLen / numChunks);
+  const overlap = Math.min(3000, Math.floor(baseSize * 0.2));
+  const chunks: string[] = [];
+
+  for (let i = 0; i < numChunks; i++) {
+    const start = Math.max(0, i * baseSize - overlap);
+    const end = Math.min(totalLen, (i + 1) * baseSize + overlap);
+    chunks.push(text.substring(start, end));
+  }
+  return chunks;
+}
+
+/** Extrai texto puro de HTML */
+function htmlToText(html: string): string {
+  try {
+    return new DOMParser().parseFromString(html, 'text/html').body.textContent ?? html;
+  } catch {
+    return html;
+  }
+}
+
+/** Limpa e valida HTML retornado pela IA */
+function sanitizeHtml(raw: string): string {
+  // Remove possíveis blocos de código markdown que a IA pode incluir
+  return raw
+    .replace(/^```html?\n?/gim, '')
+    .replace(/^```\n?/gim, '')
+    .replace(/```$/gim, '')
+    .trim();
+}
 
 export const EbookProvider = ({ children }: { children: ReactNode }) => {
   const [projects, setProjects] = useState<EbookProject[]>(() => {
@@ -67,8 +116,8 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const [activeProjectId, setActiveProjectId] = useState<string | null>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
     try {
+      const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed[0].id;
@@ -82,23 +131,35 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     return (stored as Theme) || 'obsidian-noir';
   });
 
-  const [apiKey, setApiKey] = useState<string>(() => {
+  const [apiKey, setApiKeyState] = useState<string>(() => {
     return localStorage.getItem(API_KEY_STORAGE) || '';
+  });
+
+  const [selectedModel, setSelectedModelState] = useState<string>(() => {
+    const saved = localStorage.getItem(MODEL_KEY) || '';
+    const validIds = AVAILABLE_MODELS.map(m => m.id);
+    return validIds.includes(saved as any) ? saved : DEFAULT_MODEL;
   });
 
   const [forgeStatus, setForgeStatus] = useState<ForgeStatus>('idle');
   const [forgeProgress, setForgeProgress] = useState(0);
+  const [forgeProgressDetail, setForgeProgressDetail] = useState<ForgeProgressDetail | null>(null);
   const [forgeError, setForgeError] = useState<string | null>(null);
-  const [forgeAbortController, setForgeAbortController] = useState<AbortController | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
-  // Persistence
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
   }, [projects]);
 
-  useEffect(() => {
-    localStorage.setItem(API_KEY_STORAGE, apiKey);
-  }, [apiKey]);
+  const setApiKey = useCallback((key: string) => {
+    setApiKeyState(key);
+    localStorage.setItem(API_KEY_STORAGE, key);
+  }, []);
+
+  const setSelectedModel = useCallback((model: string) => {
+    setSelectedModelState(model);
+    localStorage.setItem(MODEL_KEY, model);
+  }, []);
 
   const setActiveTheme = useCallback((theme: Theme) => {
     setActiveThemeState(theme);
@@ -131,113 +192,218 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const renameProject = useCallback((id: string, title: string) => {
-    setProjects(prev =>
-      prev.map(p => p.id === id ? { ...p, title, updatedAt: Date.now() } : p)
-    );
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, title, updatedAt: Date.now() } : p));
   }, []);
 
   const updateProjectContent = useCallback((id: string, content: string) => {
-    setProjects(prev =>
-      prev.map(p => p.id === id ? { ...p, content, updatedAt: Date.now() } : p)
-    );
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, content, updatedAt: Date.now() } : p));
   }, []);
 
   const resetForge = useCallback(() => {
-    if (forgeAbortController) {
-      forgeAbortController.abort();
-    }
+    abortController?.abort();
     setForgeStatus('idle');
     setForgeProgress(0);
+    setForgeProgressDetail(null);
     setForgeError(null);
-    setForgeAbortController(null);
-  }, [forgeAbortController]);
+    setAbortController(null);
+  }, [abortController]);
 
   const cancelForge = useCallback(() => {
-    if (forgeAbortController) {
-      console.log('🛑 Cancelando operação de forja...');
-      forgeAbortController.abort();
-    }
+    abortController?.abort();
     setForgeStatus('idle');
     setForgeProgress(0);
-    setForgeError('Operação cancelada pelo usuário.');
-    setForgeAbortController(null);
-  }, [forgeAbortController]);
+    setForgeProgressDetail(null);
+    setForgeError('Operação cancelada.');
+    setAbortController(null);
+  }, [abortController]);
 
-  const extractTextFromHtml = (html: string) => {
-    try {
-      return new DOMParser().parseFromString(html, 'text/html').body.textContent ?? html;
-    } catch {
-      return html;
-    }
-  };
-
-  const runForge = useCallback(async (fullText: string) => {
+  /**
+   * MOTOR PRINCIPAL DE GERAÇÃO
+   * Pipeline completo: Blueprint → Introdução → Capítulos (paralelos em lotes) → Conclusão
+   */
+  const runForge = useCallback(async (fullText: string, targetTheme?: Theme) => {
     if (!apiKey) {
-      setForgeError('Por favor, configure sua chave do OpenRouter primeiro.');
+      setForgeError('Configure sua chave do OpenRouter primeiro (ícone de chave na barra lateral).');
+      setForgeStatus('error');
       return;
     }
 
     const controller = new AbortController();
-    setForgeAbortController(controller);
+    setAbortController(controller);
 
     try {
-      console.log('🚀 Iniciando processo de forja...', { textLength: fullText.length });
-
+      // ─── FASE 1: BLUEPRINT ──────────────────────────────────────────────
       setForgeStatus('thinking');
-      setForgeProgress(30);
+      setForgeProgress(5);
+      setForgeProgressDetail({ phase: 'Analisando manuscrito...', current: 0, total: 1, label: 'Criando estrutura do ebook' });
 
-      console.log('📝 Gerando blueprint...');
+      // Envia até 80k chars — Claude suporta contexto grande
+      const manuscriptForBlueprint = fullText.substring(0, 80000);
+
       const blueprintRaw = await callOpenRouter(
-        [{ role: 'user', content: GhostwriterPrompts.CREATE_BLUEPRINT(fullText) }],
-        { apiKey, timeout: 180000 } // 3 minutos para blueprint
+        [{ role: 'user', content: GhostwriterPrompts.CREATE_BLUEPRINT(manuscriptForBlueprint) }],
+        { apiKey, model: selectedModel, timeout: 180000, maxTokens: 2000 },
+        controller.signal
       );
 
-      if (controller.signal.aborted) {
-        throw new Error('Operação cancelada');
-      }
+      if (controller.signal.aborted) return;
 
-      let blueprint;
+      let blueprint: Blueprint;
+
       try {
-        const jsonMatch = blueprintRaw.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('Formato de resposta inválido');
-        blueprint = JSON.parse(jsonMatch[0]);
-        console.log('✅ Blueprint gerado:', blueprint.title);
-      } catch (e) {
-        console.error('❌ Erro no parsing do blueprint:', blueprintRaw);
-        throw new Error('A IA não conseguiu gerar uma estrutura válida. Tente novamente.');
-      }
-
-      setForgeStatus('writing');
-      let finalContent = `<h1>${blueprint.title}</h1><p class="subtitle">${blueprint.subtitle}</p>`;
-
-      const chapters = blueprint.chapters;
-      const totalSteps = chapters.length;
-      console.log(`📚 Iniciando escrita de ${totalSteps} capítulos...`);
-
-      for (let i = 0; i < totalSteps; i++) {
-        if (controller.signal.aborted) {
-          throw new Error('Operação cancelada');
+        // Tenta extrair JSON da resposta (a IA às vezes envolve em ```json ... ```)
+        let jsonStr = blueprintRaw;
+        const fenceMatch = blueprintRaw.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (fenceMatch) jsonStr = fenceMatch[1];
+        const braceMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if (!braceMatch) throw new Error(`Resposta da IA não contém JSON válido. Resposta recebida: ${blueprintRaw.substring(0, 300)}`);
+        blueprint = JSON.parse(braceMatch[0]);
+        // Normaliza: suporta tanto "entries" (novo) quanto "chapters" (legado)
+        if (!blueprint.entries && (blueprint as any).chapters) {
+          blueprint.entries = (blueprint as any).chapters;
+          blueprint.content_format = blueprint.content_format || 'chapters';
         }
-
-        const chapter = chapters[i];
-        const stepProgress = 30 + ((i / totalSteps) * 60);
-        setForgeProgress(stepProgress);
-
-        console.log(`✍️ Escrevendo capítulo ${i + 1}/${totalSteps}: ${chapter.title}`);
-
-        const totalChars = fullText.length;
-        const chunkSize = Math.max(15000, Math.floor((totalChars / totalSteps) * 1.5));
-        const startPos = Math.max(0, Math.floor((i / totalSteps) * totalChars) - 3000);
-        const chunk = fullText.substring(startPos, startPos + chunkSize);
-
-        const chapterContent = await callOpenRouter([
-          { role: 'system', content: 'Você é um Ghostwriter de elite. Responda apenas com HTML limpo.' },
-          { role: 'user', content: GhostwriterPrompts.REWRITE_CHAPTER(chapter.title, chunk, JSON.stringify(blueprint)) }
-        ], { apiKey, timeout: 120000 }); // 2 minutos por capítulo
-
-        finalContent += `<div class="chapter-break"></div>${chapterContent}`;
-        console.log(`✅ Capítulo ${i + 1} concluído`);
+        if (!blueprint.entries || blueprint.entries.length === 0) {
+          throw new Error(`Estrutura gerada sem entradas. JSON recebido: ${JSON.stringify(blueprint).substring(0, 300)}`);
+        }
+      } catch (parseErr: any) {
+        throw new Error(`Erro ao processar resposta da IA: ${parseErr.message}`);
       }
+
+      const format: ContentFormat = blueprint.content_format || 'chapters';
+      const entries = blueprint.entries;
+      const totalParts = entries.length + 2; // +intro +conclusão
+      const chunks = chunkText(fullText, entries.length);
+
+      // Label de progresso adaptado ao formato
+      const entryLabel = {
+        daily_entries: 'dias',
+        chapters: 'capítulos',
+        steps: 'etapas',
+        lessons: 'lições',
+        timeline: 'momentos',
+        sections: 'seções',
+      }[format] || 'entradas';
+
+      setForgeProgress(15);
+
+      // ─── FASE 2: INTRODUÇÃO ─────────────────────────────────────────────
+      setForgeStatus('writing');
+      setForgeProgressDetail({ phase: 'Escrevendo...', current: 0, total: totalParts, label: 'Introdução' });
+
+      const introHtml = sanitizeHtml(await callOpenRouter(
+        [{ role: 'user', content: GhostwriterPrompts.WRITE_INTRO(JSON.stringify(blueprint), fullText.substring(0, 8000)) }],
+        { apiKey, model: selectedModel, timeout: 120000, maxTokens: 2000 },
+        controller.signal
+      ));
+
+      if (controller.signal.aborted) return;
+      setForgeProgress(20);
+
+      // ─── FASE 3: ENTRADAS EM LOTES DE 2 ─────────────────────────────────
+      // Seleciona o prompt correto baseado no formato detectado
+      const getEntryPrompt = (entry: Blueprint['entries'][0], context: string): string => {
+        switch (format) {
+          case 'daily_entries':
+            return GhostwriterPrompts.WRITE_DAILY_ENTRY(entry, context, blueprint.title);
+          case 'steps':
+            return GhostwriterPrompts.WRITE_STEP({ ...entry, step_number: entry.id }, context, blueprint.title);
+          case 'lessons':
+            return GhostwriterPrompts.WRITE_LESSON(entry, context, blueprint.title);
+          default:
+            return GhostwriterPrompts.WRITE_CHAPTER(entry, context, blueprint.title);
+        }
+      };
+
+      const entryResults: string[] = new Array(entries.length).fill('');
+      const BATCH_SIZE = 2;
+
+      for (let batchStart = 0; batchStart < entries.length; batchStart += BATCH_SIZE) {
+        if (controller.signal.aborted) return;
+
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, entries.length);
+        const batch = entries.slice(batchStart, batchEnd);
+
+        setForgeProgressDetail({
+          phase: `Escrevendo ${entryLabel}...`,
+          current: batchStart + 1,
+          total: entries.length,
+          label: batch.map(e => e.date_label || e.title).join(' + ')
+        });
+
+        const batchPromises = batch.map((entry, idx) =>
+          callOpenRouter(
+            [
+              { role: 'system', content: 'Você é um Ghostwriter de elite. Responda APENAS com HTML semântico limpo.' },
+              { role: 'user', content: getEntryPrompt(entry, chunks[batchStart + idx] || chunks[0]) }
+            ],
+            { apiKey, model: selectedModel, timeout: 150000, maxTokens: 4096 },
+            controller.signal
+          ).then(html => sanitizeHtml(html))
+        );
+
+        const batchResults = await Promise.all(batchPromises);
+        batchResults.forEach((html, idx) => {
+          entryResults[batchStart + idx] = html;
+        });
+
+        const progressPct = 20 + ((batchEnd / entries.length) * 60);
+        setForgeProgress(progressPct);
+      }
+
+      if (controller.signal.aborted) return;
+
+      // ─── FASE 4: CONCLUSÃO ───────────────────────────────────────────────
+      setForgeProgressDetail({ phase: 'Finalizando...', current: totalParts - 1, total: totalParts, label: 'Conclusão' });
+
+      const conclusionHtml = sanitizeHtml(await callOpenRouter(
+        [{ role: 'user', content: GhostwriterPrompts.WRITE_CONCLUSION(JSON.stringify(blueprint), fullText.substring(Math.max(0, fullText.length - 6000))) }],
+        { apiKey, model: selectedModel, timeout: 120000, maxTokens: 2000 },
+        controller.signal
+      ));
+
+      if (controller.signal.aborted) return;
+
+      // ─── MONTAGEM FINAL ──────────────────────────────────────────────────
+      setForgeProgress(95);
+      setForgeProgressDetail({ phase: 'Montando ebook...', current: totalParts, total: totalParts, label: 'Pronto!' });
+
+      // Badge visual indicando o formato detectado
+      const formatEmoji: Record<ContentFormat, string> = {
+        daily_entries: '📅 Jornada Diária',
+        chapters: '📖 Livro por Capítulos',
+        steps: '⚡ Guia Passo a Passo',
+        timeline: '🕐 Linha do Tempo',
+        lessons: '🎓 Curso em Lições',
+        sections: '📌 Seções Temáticas',
+      };
+
+      const coverHtml = `
+<div class="ebook-cover">
+  <span class="cover-format-badge">${formatEmoji[format] || '📖'}</span>
+  <h1 class="cover-title">${blueprint.title}</h1>
+  <p class="cover-subtitle">${blueprint.subtitle}</p>
+  ${blueprint.author_note ? `<p class="cover-author-note">${blueprint.author_note}</p>` : ''}
+  ${blueprint.format_hint ? `<p class="cover-format-hint">${blueprint.format_hint}</p>` : ''}
+</div>
+<div class="chapter-break"></div>`;
+
+      // Para daily_entries, não envolve em chapter-section (o day-entry já é o card)
+      const wrapEntry = (html: string) =>
+        format === 'daily_entries' || format === 'steps' || format === 'lessons'
+          ? html  // já vem com seu próprio card wrapper
+          : `<div class="chapter-section">${html}</div>`;
+
+      const entriesHtml = entryResults
+        .map(html => `${wrapEntry(html)}<div class="chapter-break"></div>`)
+        .join('\n');
+
+      const finalContent = [
+        coverHtml,
+        `<div class="chapter-section">${introHtml}</div><div class="chapter-break"></div>`,
+        entriesHtml,
+        `<div class="chapter-section">${conclusionHtml}</div>`,
+      ].join('\n');
 
       const newId = `ebook_forge_${Date.now()}`;
       const newProject: EbookProject = {
@@ -250,133 +416,75 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
 
       setProjects(prev => [...prev, newProject]);
       setActiveProjectId(newId);
-      setForgeStatus('finished');
-      setForgeProgress(100);
-      console.log('🎉 Ebook forjado com sucesso!');
 
-    } catch (err: any) {
-      if (err.message === 'Operação cancelada') {
-        console.log('🛑 Operação cancelada pelo usuário');
-        return;
+      // Aplica o tema escolhido
+      if (targetTheme) {
+        setActiveTheme(targetTheme);
       }
 
-      console.error('❌ Erro na forja:', err);
-      setForgeStatus('error');
-      setForgeError(err.message || 'Ocorreu um erro inesperado na forja.');
-    } finally {
-      setForgeAbortController(null);
-    }
-  }, [apiKey]);
+      setForgeStatus('finished');
+      setForgeProgress(100);
+      setForgeProgressDetail({ phase: 'Concluído!', current: totalParts, total: totalParts, label: blueprint.title });
 
-  const forgeEbookFromText = useCallback(async (text: string) => {
+    } catch (err: any) {
+      if (err.message === 'Operação cancelada.' || controller.signal.aborted) return;
+      setForgeStatus('error');
+      setForgeError(err.message || 'Erro inesperado. Tente novamente.');
+    } finally {
+      setAbortController(null);
+    }
+  }, [apiKey, selectedModel, setActiveTheme]);
+
+  const forgeEbook = useCallback(async (file: File, theme?: Theme) => {
     if (!apiKey) {
-      setForgeError('Por favor, configure sua chave do OpenRouter primeiro.');
+      setForgeError('Configure sua chave do OpenRouter primeiro.');
+      setForgeStatus('error');
       return;
     }
-
     setForgeStatus('parsing');
-    setForgeProgress(10);
+    setForgeProgress(3);
+    setForgeProgressDetail({ phase: 'Extraindo texto do PDF...', current: 0, total: 1, label: file.name });
+    setForgeError(null);
 
-    const fullText = extractTextFromHtml(text);
-    await runForge(fullText);
+    try {
+      const { fullText } = await extractTextFromPdf(file);
+      if (!fullText || fullText.trim().length < 100) {
+        throw new Error('O PDF não contém texto suficiente. Verifique se o arquivo não é uma imagem escaneada.');
+      }
+      await runForge(fullText, theme);
+    } catch (err: any) {
+      setForgeStatus('error');
+      setForgeError(err.message || 'Erro ao processar o PDF.');
+    }
   }, [apiKey, runForge]);
 
-  /**
-   * O Motor de Forja: Orquestra o processo de IA
-   */
-  const forgeEbook = async (file: File) => {
+  const forgeEbookFromText = useCallback(async (text: string, theme?: Theme) => {
     if (!apiKey) {
-      setForgeError('Por favor, configure sua chave do OpenRouter primeiro.');
+      setForgeError('Configure sua chave do OpenRouter primeiro.');
+      setForgeStatus('error');
       return;
     }
-
-    try {
-      setForgeStatus('parsing');
-      setForgeProgress(10);
-      
-      // 1. Extrair Texto do PDF
-      const { fullText } = await extractTextFromPdf(file);
-      
-      setForgeStatus('thinking');
-      setForgeProgress(30);
-
-      // 2. Criar Blueprint (Estrutura) via IA
-      const blueprintRaw = await callOpenRouter(
-        [{ role: 'user', content: GhostwriterPrompts.CREATE_BLUEPRINT(fullText) }],
-        { apiKey }
-      );
-      
-      // Extrair JSON do retorno (limpar possíveis textos extras de forma robusta)
-      let blueprint;
-      try {
-        const jsonMatch = blueprintRaw.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('Formato de resposta inválido');
-        blueprint = JSON.parse(jsonMatch[0]);
-      } catch (e) {
-        console.error('Erro no parsing do blueprint:', blueprintRaw);
-        throw new Error('A IA não conseguiu gerar uma estrutura válida. Tente novamente.');
-      }
-
-      setForgeStatus('writing');
-      let finalContent = `<h1>${blueprint.title}</h1><p class="subtitle">${blueprint.subtitle}</p>`;
-      
-      // 3. Gerar Capítulos um por um
-      const chapters = blueprint.chapters;
-      const totalSteps = chapters.length;
-      
-      for (let i = 0; i < totalSteps; i++) {
-        const chapter = chapters[i];
-        const stepProgress = 30 + ((i / totalSteps) * 60);
-        setForgeProgress(stepProgress);
-
-        // Busca de Contexto Inteligente: Janela deslizante proporcional ao progresso do livro
-        const totalChars = fullText.length;
-        const chunkSize = Math.max(15000, Math.floor(totalChars / totalSteps * 1.5));
-        const startPos = Math.max(0, Math.floor((i / totalSteps) * totalChars) - 3000);
-        const chunk = fullText.substring(startPos, startPos + chunkSize);
-
-        const chapterContent = await callOpenRouter([
-          { role: 'system', content: 'Você é um Ghostwriter de elite. Responda apenas com HTML limpo.' },
-          { role: 'user', content: GhostwriterPrompts.REWRITE_CHAPTER(chapter.title, chunk, JSON.stringify(blueprint)) }
-        ], { apiKey });
-
-        finalContent += `<div class="chapter-break"></div>${chapterContent}`;
-      }
-
-      // 4. Salvar como Novo Projeto
-      const newId = `ebook_forge_${Date.now()}`;
-      const newProject: EbookProject = {
-        id: newId,
-        title: blueprint.title,
-        content: finalContent,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      setProjects(prev => [...prev, newProject]);
-      setActiveProjectId(newId);
-      setForgeStatus('finished');
-      setForgeProgress(100);
-
-    } catch (err: any) {
-      console.error(err);
+    const clean = htmlToText(text).trim();
+    if (clean.length < 100) {
+      setForgeError('O texto é muito curto. Cole pelo menos alguns parágrafos do seu manuscrito.');
       setForgeStatus('error');
-      setForgeError(err.message || 'Ocorreu um erro inesperado na forja.');
+      return;
     }
-  };
+    setForgeStatus('parsing');
+    setForgeProgress(3);
+    setForgeError(null);
+    setForgeProgressDetail({ phase: 'Preparando manuscrito...', current: 0, total: 1, label: `${clean.length.toLocaleString()} caracteres` });
+    await runForge(clean, theme);
+  }, [apiKey, runForge]);
 
   const importSingleProject = useCallback((project: EbookProject) => {
     setProjects(prev => [...prev, project]);
     setActiveProjectId(project.id);
-    console.log(`✅ Projeto importado: ${project.title}`);
   }, []);
 
   const importMultipleProjects = useCallback((newProjects: EbookProject[]) => {
     setProjects(prev => [...prev, ...newProjects]);
-    if (newProjects.length > 0) {
-      setActiveProjectId(newProjects[0].id);
-    }
-    console.log(`✅ ${newProjects.length} projetos importados`);
+    if (newProjects.length > 0) setActiveProjectId(newProjects[0].id);
   }, []);
 
   const activeProject = projects.find(p => p.id === activeProjectId) ?? projects[0] ?? null;
@@ -388,10 +496,13 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       activeProject,
       activeTheme,
       apiKey,
+      selectedModel,
       forgeStatus,
       forgeProgress,
+      forgeProgressDetail,
       forgeError,
       setApiKey,
+      setSelectedModel,
       setActiveTheme,
       createProject,
       deleteProject,
@@ -415,4 +526,3 @@ export const useEbook = () => {
   if (context === undefined) throw new Error('useEbook must be used within an EbookProvider');
   return context;
 };
-

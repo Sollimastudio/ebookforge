@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
 import { useEbook, type Theme, type EbookProject } from '../../context/EbookContext';
+import type { AppView } from '../../App';
 import { exportProjectToFile, exportProjectsToFile, importProjectFromFile, importBackupFile } from '../../utils/projectIO';
 import {
   BookOpen, Plus, Trash2, Pencil, Check, X,
   Palette, Sun, Moon, Sparkles, Sunset,
-  Download, FileText, ChevronRight, Key, LayoutDashboard, AlertCircle, Upload
+  Download, FileText, ChevronRight, Key, LayoutDashboard, AlertCircle, Upload,
+  TreePine, Waves, Heart, Star, Flame, Crown, Cloud
 } from 'lucide-react';
 
 const THEMES: { id: Theme; label: string; icon: React.ReactNode; preview: string }[] = [
@@ -12,19 +14,28 @@ const THEMES: { id: Theme; label: string; icon: React.ReactNode; preview: string
   { id: 'arctic-white', label: 'Arctic White', icon: <Sun size={14} />, preview: '#f8f9fa' },
   { id: 'royal-purple', label: 'Royal Purple', icon: <Sparkles size={14} />, preview: '#1a0533' },
   { id: 'sunset-warm', label: 'Sunset Warm', icon: <Sunset size={14} />, preview: '#1c1209' },
+  { id: 'forest-green', label: 'Forest Green', icon: <TreePine size={14} />, preview: '#0a1a0f' },
+  { id: 'ocean-blue', label: 'Ocean Blue', icon: <Waves size={14} />, preview: '#0a1625' },
+  { id: 'rose-pink', label: 'Rose Pink', icon: <Heart size={14} />, preview: '#250a1a' },
+  { id: 'midnight-blue', label: 'Midnight Blue', icon: <Star size={14} />, preview: '#0a0f1c' },
+  { id: 'crimson-red', label: 'Crimson Red', icon: <Flame size={14} />, preview: '#1a0a0a' },
+  { id: 'amber-gold', label: 'Amber Gold', icon: <Crown size={14} />, preview: '#1a1500' },
+  { id: 'slate-gray', label: 'Slate Gray', icon: <Cloud size={14} />, preview: '#0f172a' },
 ];
 
 interface SidebarProps {
   onExportPDF: () => void;
   onExportHTML: () => void;
+  currentView: AppView;
+  onNavigate: (view: AppView, projectId?: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) => {
-  const { 
-    projects, activeProjectId, activeProject, setActiveProjectId, 
-    createProject, deleteProject, renameProject, 
+export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, currentView, onNavigate }) => {
+  const {
+    projects, activeProjectId, activeProject,
+    createProject, deleteProject, renameProject,
     activeTheme, setActiveTheme,
-    apiKey, setApiKey, forgeEbookFromText, forgeStatus, cancelForge,
+    apiKey, setApiKey, forgeStatus, cancelForge,
     importSingleProject, importMultipleProjects
   } = useEbook();
   
@@ -37,12 +48,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) =
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const handleNew = () => {
-    createProject(`Ebook ${projects.length + 1}`);
+    const p = createProject(`Ebook ${projects.length + 1}`);
+    onNavigate('editor', p.id);
   };
 
-  const handleForge = () => {
-    if (!activeProject) return;
-    forgeEbookFromText(activeProject.content);
+  const handleGoForge = () => {
+    onNavigate('forge');
   };
 
   const handleImportProject = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,76 +139,94 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) =
       {/* Main Actions */}
       <div className="sidebar-main-actions">
         <button 
-          className={`btn-sidebar-nav ${!activeProjectId ? 'active' : ''}`} 
-          onClick={() => setActiveProjectId('')}
+          className={`btn-sidebar-nav ${currentView === 'forge' ? 'active' : ''}`}
+          onClick={handleGoForge}
+          title="Criar ebook com IA"
         >
           <LayoutDashboard size={14} />
-          <span>Painel de Forja</span>
+          <span>🏠 Início (Anexar Manuscritos)</span>
         </button>
-        <button className="btn-sidebar-nav" onClick={handleNew}>
+        <button 
+          className="btn-sidebar-nav" 
+          onClick={handleNew}
+          title="✨ Criar um novo ebook vazio para editar"
+        >
           <Plus size={14} />
-          <span>Novo Ebook</span>
+          <span>📝 Novo Ebook</span>
         </button>
       </div>
 
       {/* Projects Section */}
-      <div className="sidebar-section-label">Meus Ebooks ({projects.length})</div>
+      <div className="sidebar-section-label">
+        📚 Meus Ebooks Salvos ({projects.length})
+        <div className="section-hint">Clique para editar • Arraste PDFs no "Início" para criar novos</div>
+      </div>
 
       <div className="projects-list">
-        {projects.map(p => (
-          <div
-            key={p.id}
-            className={`project-item ${p.id === activeProjectId ? 'active' : ''}`}
-            onClick={() => p.id !== renamingId && setActiveProjectId(p.id)}
-          >
-            {p.id === activeProjectId && <span className="project-active-bar" />}
-
-            {renamingId === p.id ? (
-              <div className="rename-row" onClick={e => e.stopPropagation()}>
-                <input
-                  ref={renameInputRef}
-                  className="rename-input"
-                  value={renameValue}
-                  onChange={e => setRenameValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                />
-                <button className="icon-btn green" onClick={confirmRename}><Check size={13} /></button>
-                <button className="icon-btn red" onClick={() => setRenamingId(null)}><X size={13} /></button>
-              </div>
-            ) : (
-              <>
-                <div className="project-info">
-                  <div className="project-title">
-                    {p.id === activeProjectId && <ChevronRight size={12} className="chevron" />}
-                    {p.title}
-                  </div>
-                  <div className="project-date">{formatDate(p.updatedAt)}</div>
-                </div>
-                <div className="project-actions" onClick={e => e.stopPropagation()}>
-                  <button className="icon-btn" title="Renomear" onClick={() => startRename(p)}>
-                    <Pencil size={12} />
-                  </button>
-                  <button
-                    className="icon-btn danger"
-                    title="Excluir"
-                    onClick={() => {
-                      if (window.confirm(`Excluir "${p.title}"?`)) deleteProject(p.id);
-                    }}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </>
-            )}
+        {projects.length === 0 ? (
+          <div className="empty-projects">
+            <div className="empty-icon">📚</div>
+            <div className="empty-title">Nenhum ebook ainda</div>
+            <div className="empty-desc">
+              Clique em "🏠 Início" e arraste um PDF para criar seu primeiro ebook com IA!
+            </div>
           </div>
-        ))}
+        ) : (
+          projects.map(p => (
+            <div
+              key={p.id}
+              className={`project-item ${p.id === activeProjectId && currentView === 'editor' ? 'active' : ''}`}
+              onClick={() => p.id !== renamingId && onNavigate('editor', p.id)}
+            >
+              {p.id === activeProjectId && <span className="project-active-bar" />}
+
+              {renamingId === p.id ? (
+                <div className="rename-row" onClick={e => e.stopPropagation()}>
+                  <input
+                    ref={renameInputRef}
+                    className="rename-input"
+                    value={renameValue}
+                    onChange={e => setRenameValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                  />
+                  <button className="icon-btn green" onClick={confirmRename}><Check size={13} /></button>
+                  <button className="icon-btn red" onClick={() => setRenamingId(null)}><X size={13} /></button>
+                </div>
+              ) : (
+                <>
+                  <div className="project-info">
+                    <div className="project-title">
+                      {p.id === activeProjectId && <ChevronRight size={12} className="chevron" />}
+                      {p.title}
+                    </div>
+                    <div className="project-date">{formatDate(p.updatedAt)}</div>
+                  </div>
+                  <div className="project-actions" onClick={e => e.stopPropagation()}>
+                    <button className="icon-btn" title="Renomear" onClick={() => startRename(p)}>
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      className="icon-btn danger"
+                      title="Excluir"
+                      onClick={() => {
+                        if (window.confirm(`Excluir "${p.title}"?`)) deleteProject(p.id);
+                      }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))
+        )}
       </div>
 
       {/* Settings Section */}
       <div className="sidebar-divider" />
       
       <div className="sidebar-section-label">
-        <Key size={12} /> Configurações
+        <Key size={12} /> ⚙️ Configurações
       </div>
       
       <div className="api-key-section">
@@ -206,21 +235,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) =
           onClick={() => setShowApiInput(!showApiInput)}
         >
           {apiKey ? (
-            <><Check size={14} /> API Key Configurada</>
+            <><Check size={14} /> ✅ API Configurada</>
           ) : (
-            <><AlertCircle size={14} className="animate-pulse" /> Configurar Chave OpenRouter</>
+            <><AlertCircle size={14} className="animate-pulse" /> 🔑 Configurar IA (OpenRouter)</>
           )}
         </button>
         {showApiInput && (
           <div className="api-input-wrap">
             <input 
               type="password" 
-              placeholder="Sua chave OpenRouter..." 
+              placeholder="Cole sua chave OpenRouter aqui..." 
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               className="api-input"
             />
-            <p className="api-hint">A chave fica salva localmente no seu MacBook.</p>
+            <p className="api-hint">🔒 A chave fica salva apenas no seu MacBook. <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">Obter chave gratuita →</a></p>
           </div>
         )}
       </div>
@@ -254,65 +283,80 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML }) =
       <div className="sidebar-divider" />
 
       {/* Export */}
-      <div className="sidebar-section-label"><Download size={12} /> Exportar</div>
+      <div className="sidebar-section-label"><Download size={12} /> 📤 Exportar & Compartilhar</div>
       <div className="export-btns">
-        <button className="btn-export" onClick={handleForge} disabled={!activeProjectId || !apiKey || forgeStatus !== 'idle'}>
+        <button 
+          className="btn-export" 
+          onClick={handleGoForge}
+          disabled={!apiKey || forgeStatus !== 'idle'}
+          title="🤖 Usar IA para melhorar o texto atual"
+        >
           <Sparkles size={14} />
-          <span>Forjar Ebook</span>
+          <span>✨ Melhorar com IA</span>
         </button>
         {forgeStatus !== 'idle' && (
           <button className="btn-export cancel" onClick={cancelForge}>
             <X size={14} />
-            <span>Cancelar</span>
+            <span>⏹️ Cancelar</span>
           </button>
         )}
-        <button className="btn-export" onClick={onExportPDF} disabled={!activeProjectId}>
+        <button 
+          className="btn-export" 
+          onClick={onExportPDF} 
+          disabled={!activeProjectId}
+          title="📄 Gerar PDF profissional"
+        >
           <FileText size={14} />
-          <span>PDF</span>
+          <span>📄 Exportar PDF</span>
         </button>
-        <button className="btn-export" onClick={onExportHTML} disabled={!activeProjectId}>
+        <button 
+          className="btn-export" 
+          onClick={onExportHTML} 
+          disabled={!activeProjectId}
+          title="🌐 Gerar arquivo HTML"
+        >
           <FileText size={14} />
-          <span>HTML</span>
+          <span>🌐 Exportar HTML</span>
         </button>
       </div>
 
       {/* Import & Sync */}
       <div className="sidebar-divider" />
-      <div className="sidebar-section-label"><Upload size={12} /> Importar & Sincronizar</div>
+      <div className="sidebar-section-label"><Upload size={12} /> 📥 Importar & Backup</div>
       <div className="export-btns">
         <button 
           className="btn-export" 
           onClick={() => importFileRef.current?.click()}
-          title="Importar um único projeto .ebookforge"
+          title="📂 Carregar um ebook salvo (.ebookforge)"
         >
           <Upload size={14} />
-          <span>Importar Projeto</span>
+          <span>📂 Importar Ebook</span>
         </button>
         <button 
           className="btn-export" 
           onClick={() => importBackupFileRef.current?.click()}
-          title="Importar backup com múltiplos projetos"
+          title="💾 Restaurar backup com múltiplos ebooks"
         >
           <Upload size={14} />
-          <span>Importar Backup</span>
+          <span>💾 Importar Backup</span>
         </button>
         <button 
           className="btn-export" 
           onClick={handleExportCurrent}
           disabled={!activeProjectId}
-          title="Baixar projeto atual"
+          title="⬇️ Baixar ebook atual"
         >
           <Download size={14} />
-          <span>Exportar Este</span>
+          <span>⬇️ Salvar Este Ebook</span>
         </button>
         <button 
           className="btn-export" 
           onClick={handleExportAllProjects}
           disabled={projects.length === 0}
-          title="Fazer backup de todos os projetos"
+          title="📦 Fazer backup de todos os ebooks"
         >
           <Download size={14} />
-          <span>Backup Completo</span>
+          <span>📦 Backup Completo</span>
         </button>
       </div>
 
