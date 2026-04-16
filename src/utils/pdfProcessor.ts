@@ -1,8 +1,8 @@
 import * as pdfjs from 'pdfjs-dist';
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Configuração do worker para o ambiente web do Vite
-// Usamos a versão do CDN para garantir compatibilidade sem configuração complexa de build
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+// Worker local — sem dependência de CDN externo
+pdfjs.GlobalWorkerOptions.workerSrc = PdfWorker;
 
 export interface ExtractedText {
   fullText: string;
