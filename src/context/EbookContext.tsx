@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { extractTextFromPdf } from '../utils/pdfProcessor';
-import { callOpenRouter, DEFAULT_MODEL, AVAILABLE_MODELS } from '../services/openrouter';
+import { callAI, DEFAULT_MODEL, ALL_MODELS as AVAILABLE_MODELS, type EngineType } from '../services/aiEngine';
 import { GhostwriterPrompts, type Blueprint, type ContentFormat } from '../services/prompts';
+import { generateImage, buildCoverPrompt } from '../services/imageGen';
 
 export type Theme = 'obsidian-noir' | 'arctic-white' | 'royal-purple' | 'sunset-warm' | 'forest-green' | 'ocean-blue' | 'rose-pink' | 'midnight-blue' | 'crimson-red' | 'amber-gold' | 'slate-gray';
 
@@ -29,13 +30,27 @@ interface EbookContextType {
   activeProject: EbookProject | null;
   activeTheme: Theme;
   apiKey: string;
+  openaiKey: string;
+  replicateKey: string;
+  anthropicKey: string;
+  imageProvider: 'none' | 'openai' | 'replicate';
+  imageModel: string;
+  generateImages: boolean;
   selectedModel: string;
+  selectedEngine: EngineType;
   forgeStatus: ForgeStatus;
   forgeProgress: number;
   forgeProgressDetail: ForgeProgressDetail | null;
   forgeError: string | null;
   setApiKey: (key: string) => void;
+  setOpenaiKey: (key: string) => void;
+  setReplicateKey: (key: string) => void;
+  setAnthropicKey: (key: string) => void;
+  setImageProvider: (p: 'none' | 'openai' | 'replicate') => void;
+  setImageModel: (m: string) => void;
+  setGenerateImages: (v: boolean) => void;
   setSelectedModel: (model: string) => void;
+  setSelectedEngine: (engine: EngineType) => void;
   setActiveTheme: (theme: Theme) => void;
   createProject: (title: string) => EbookProject;
   deleteProject: (id: string) => void;
@@ -56,6 +71,13 @@ const STORAGE_KEY = 'ebookforge_projects';
 const THEME_KEY = 'ebookforge_theme';
 const API_KEY_STORAGE = 'ebookforge_api_key';
 const MODEL_KEY = 'ebookforge_model';
+const ENGINE_KEY = 'ebookforge_engine';
+const OPENAI_KEY_STORAGE = 'ebookforge_openai_key';
+const REPLICATE_KEY_STORAGE = 'ebookforge_replicate_key';
+const ANTHROPIC_KEY_STORAGE = 'ebookforge_anthropic_key';
+const IMAGE_PROVIDER_KEY = 'ebookforge_image_provider';
+const IMAGE_MODEL_KEY = 'ebookforge_image_model';
+const GENERATE_IMAGES_KEY = 'ebookforge_generate_images';
 
 const createDefaultProject = (): EbookProject => ({
   id: `ebook_${Date.now()}`,
@@ -141,6 +163,21 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     return validIds.includes(saved as any) ? saved : DEFAULT_MODEL;
   });
 
+  const [selectedEngine, setSelectedEngineState] = useState<EngineType>(() => {
+    const saved = localStorage.getItem(ENGINE_KEY);
+    return (saved === 'ollama' || saved === 'openrouter') ? saved : 'openrouter';
+  });
+
+  const [openaiKey, setOpenaiKeyState] = useState<string>(() => localStorage.getItem(OPENAI_KEY_STORAGE) || '');
+  const [replicateKey, setReplicateKeyState] = useState<string>(() => localStorage.getItem(REPLICATE_KEY_STORAGE) || '');
+  const [anthropicKey, setAnthropicKeyState] = useState<string>(() => localStorage.getItem(ANTHROPIC_KEY_STORAGE) || '');
+  const [imageProvider, setImageProviderState] = useState<'none' | 'openai' | 'replicate'>(() => {
+    const saved = localStorage.getItem(IMAGE_PROVIDER_KEY);
+    return (saved === 'openai' || saved === 'replicate' || saved === 'none') ? saved : 'none';
+  });
+  const [imageModel, setImageModelState] = useState<string>(() => localStorage.getItem(IMAGE_MODEL_KEY) || 'dall-e-3');
+  const [generateImages, setGenerateImagesState] = useState<boolean>(() => localStorage.getItem(GENERATE_IMAGES_KEY) === 'true');
+
   const [forgeStatus, setForgeStatus] = useState<ForgeStatus>('idle');
   const [forgeProgress, setForgeProgress] = useState(0);
   const [forgeProgressDetail, setForgeProgressDetail] = useState<ForgeProgressDetail | null>(null);
@@ -160,6 +197,18 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     setSelectedModelState(model);
     localStorage.setItem(MODEL_KEY, model);
   }, []);
+
+  const setSelectedEngine = useCallback((engine: EngineType) => {
+    setSelectedEngineState(engine);
+    localStorage.setItem(ENGINE_KEY, engine);
+  }, []);
+
+  const setOpenaiKey = useCallback((k: string) => { setOpenaiKeyState(k); localStorage.setItem(OPENAI_KEY_STORAGE, k); }, []);
+  const setReplicateKey = useCallback((k: string) => { setReplicateKeyState(k); localStorage.setItem(REPLICATE_KEY_STORAGE, k); }, []);
+  const setAnthropicKey = useCallback((k: string) => { setAnthropicKeyState(k); localStorage.setItem(ANTHROPIC_KEY_STORAGE, k); }, []);
+  const setImageProvider = useCallback((p: 'none' | 'openai' | 'replicate') => { setImageProviderState(p); localStorage.setItem(IMAGE_PROVIDER_KEY, p); }, []);
+  const setImageModel = useCallback((m: string) => { setImageModelState(m); localStorage.setItem(IMAGE_MODEL_KEY, m); }, []);
+  const setGenerateImages = useCallback((v: boolean) => { setGenerateImagesState(v); localStorage.setItem(GENERATE_IMAGES_KEY, v ? 'true' : 'false'); }, []);
 
   const setActiveTheme = useCallback((theme: Theme) => {
     setActiveThemeState(theme);
@@ -222,8 +271,8 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
    * Pipeline completo: Blueprint → Introdução → Capítulos (paralelos em lotes) → Conclusão
    */
   const runForge = useCallback(async (fullText: string, targetTheme?: Theme) => {
-    if (!apiKey) {
-      setForgeError('Configure sua chave do OpenRouter primeiro (ícone de chave na barra lateral).');
+    if (selectedEngine === 'openrouter' && !apiKey) {
+      setForgeError('Configure sua chave do OpenRouter primeiro (ícone de chave na barra lateral) ou escolha o motor Ollama Local.');
       setForgeStatus('error');
       return;
     }
@@ -240,9 +289,9 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       // Envia até 80k chars — Claude suporta contexto grande
       const manuscriptForBlueprint = fullText.substring(0, 80000);
 
-      const blueprintRaw = await callOpenRouter(
+      const blueprintRaw = await callAI(
         [{ role: 'user', content: GhostwriterPrompts.CREATE_BLUEPRINT(manuscriptForBlueprint) }],
-        { apiKey, model: selectedModel, timeout: 180000, maxTokens: 2000 },
+        { engine: selectedEngine, apiKey, model: selectedModel, timeout: 180000, maxTokens: 4000 },
         controller.signal
       );
 
@@ -255,9 +304,32 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
         let jsonStr = blueprintRaw;
         const fenceMatch = blueprintRaw.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (fenceMatch) jsonStr = fenceMatch[1];
-        const braceMatch = jsonStr.match(/\{[\s\S]*\}/);
-        if (!braceMatch) throw new Error(`Resposta da IA não contém JSON válido. Resposta recebida: ${blueprintRaw.substring(0, 300)}`);
-        blueprint = JSON.parse(braceMatch[0]);
+
+        // Tenta encontrar o JSON mais externo (começa em { e fecha no último })
+        const firstBrace = jsonStr.indexOf('{');
+        const lastBrace = jsonStr.lastIndexOf('}');
+        if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+          throw new Error(`Resposta da IA não contém JSON válido. Resposta recebida: ${blueprintRaw.substring(0, 300)}`);
+        }
+        const jsonCandidate = jsonStr.substring(firstBrace, lastBrace + 1);
+
+        try {
+          blueprint = JSON.parse(jsonCandidate);
+        } catch {
+          // FALLBACK: tenta "consertar" JSON truncado fechando arrays/objetos abertos
+          let repaired = jsonCandidate;
+          const openBraces = (repaired.match(/\{/g) || []).length;
+          const closeBraces = (repaired.match(/\}/g) || []).length;
+          const openBrackets = (repaired.match(/\[/g) || []).length;
+          const closeBrackets = (repaired.match(/\]/g) || []).length;
+          // Remove última vírgula solta, se houver
+          repaired = repaired.replace(/,\s*$/, '');
+          // Fecha brackets/braces que faltam
+          repaired += ']'.repeat(Math.max(0, openBrackets - closeBrackets));
+          repaired += '}'.repeat(Math.max(0, openBraces - closeBraces));
+          blueprint = JSON.parse(repaired);
+        }
+
         // Normaliza: suporta tanto "entries" (novo) quanto "chapters" (legado)
         if (!blueprint.entries && (blueprint as any).chapters) {
           blueprint.entries = (blueprint as any).chapters;
@@ -291,9 +363,9 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       setForgeStatus('writing');
       setForgeProgressDetail({ phase: 'Escrevendo...', current: 0, total: totalParts, label: 'Introdução' });
 
-      const introHtml = sanitizeHtml(await callOpenRouter(
+      const introHtml = sanitizeHtml(await callAI(
         [{ role: 'user', content: GhostwriterPrompts.WRITE_INTRO(JSON.stringify(blueprint), fullText.substring(0, 8000)) }],
-        { apiKey, model: selectedModel, timeout: 120000, maxTokens: 2000 },
+        { engine: selectedEngine, apiKey, model: selectedModel, timeout: 120000, maxTokens: 2000 },
         controller.signal
       ));
 
@@ -332,12 +404,12 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
         });
 
         const batchPromises = batch.map((entry, idx) =>
-          callOpenRouter(
+          callAI(
             [
               { role: 'system', content: 'Você é um Ghostwriter de elite. Responda APENAS com HTML semântico limpo.' },
               { role: 'user', content: getEntryPrompt(entry, chunks[batchStart + idx] || chunks[0]) }
             ],
-            { apiKey, model: selectedModel, timeout: 150000, maxTokens: 4096 },
+            { engine: selectedEngine, apiKey, model: selectedModel, timeout: 150000, maxTokens: 4096 },
             controller.signal
           ).then(html => sanitizeHtml(html))
         );
@@ -356,9 +428,9 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       // ─── FASE 4: CONCLUSÃO ───────────────────────────────────────────────
       setForgeProgressDetail({ phase: 'Finalizando...', current: totalParts - 1, total: totalParts, label: 'Conclusão' });
 
-      const conclusionHtml = sanitizeHtml(await callOpenRouter(
+      const conclusionHtml = sanitizeHtml(await callAI(
         [{ role: 'user', content: GhostwriterPrompts.WRITE_CONCLUSION(JSON.stringify(blueprint), fullText.substring(Math.max(0, fullText.length - 6000))) }],
-        { apiKey, model: selectedModel, timeout: 120000, maxTokens: 2000 },
+        { engine: selectedEngine, apiKey, model: selectedModel, timeout: 120000, maxTokens: 2000 },
         controller.signal
       ));
 
@@ -378,8 +450,28 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
         sections: '📌 Seções Temáticas',
       };
 
+      // ─── GERAÇÃO DE IMAGEM DE CAPA (OPCIONAL) ───────────────────────────
+      let coverImageUrl: string | null = null;
+      if (generateImages && imageProvider !== 'none') {
+        const imgKey = imageProvider === 'openai' ? openaiKey : replicateKey;
+        if (imgKey) {
+          try {
+            setForgeProgressDetail({ phase: 'Gerando capa ilustrada...', current: totalParts, total: totalParts, label: blueprint.title });
+            const img = await generateImage(
+              buildCoverPrompt(blueprint.title, targetTheme),
+              { provider: imageProvider, apiKey: imgKey, model: imageModel, size: '1024x1024' },
+              controller.signal
+            );
+            coverImageUrl = img.url;
+          } catch (imgErr) {
+            console.warn('Falha na geração de imagem (seguindo sem capa):', imgErr);
+          }
+        }
+      }
+
       const coverHtml = `
 <div class="ebook-cover">
+  ${coverImageUrl ? `<img class="cover-hero-image" src="${coverImageUrl}" alt="Capa" />` : ''}
   <span class="cover-format-badge">${formatEmoji[format] || '📖'}</span>
   <h1 class="cover-title">${blueprint.title}</h1>
   <p class="cover-subtitle">${blueprint.subtitle}</p>
@@ -433,11 +525,11 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setAbortController(null);
     }
-  }, [apiKey, selectedModel, setActiveTheme]);
+  }, [apiKey, selectedModel, selectedEngine, setActiveTheme, generateImages, imageProvider, imageModel, openaiKey, replicateKey]);
 
   const forgeEbook = useCallback(async (file: File, theme?: Theme) => {
-    if (!apiKey) {
-      setForgeError('Configure sua chave do OpenRouter primeiro.');
+    if (selectedEngine === 'openrouter' && !apiKey) {
+      setForgeError('Configure sua chave do OpenRouter primeiro ou escolha o motor Ollama Local.');
       setForgeStatus('error');
       return;
     }
@@ -456,11 +548,11 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       setForgeStatus('error');
       setForgeError(err.message || 'Erro ao processar o PDF.');
     }
-  }, [apiKey, runForge]);
+  }, [apiKey, selectedEngine, runForge]);
 
   const forgeEbookFromText = useCallback(async (text: string, theme?: Theme) => {
-    if (!apiKey) {
-      setForgeError('Configure sua chave do OpenRouter primeiro.');
+    if (selectedEngine === 'openrouter' && !apiKey) {
+      setForgeError('Configure sua chave do OpenRouter primeiro ou escolha o motor Ollama Local.');
       setForgeStatus('error');
       return;
     }
@@ -475,7 +567,7 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     setForgeError(null);
     setForgeProgressDetail({ phase: 'Preparando manuscrito...', current: 0, total: 1, label: `${clean.length.toLocaleString()} caracteres` });
     await runForge(clean, theme);
-  }, [apiKey, runForge]);
+  }, [apiKey, selectedEngine, runForge]);
 
   const importSingleProject = useCallback((project: EbookProject) => {
     setProjects(prev => [...prev, project]);
@@ -496,13 +588,27 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       activeProject,
       activeTheme,
       apiKey,
+      openaiKey,
+      replicateKey,
+      anthropicKey,
+      imageProvider,
+      imageModel,
+      generateImages,
       selectedModel,
+      selectedEngine,
       forgeStatus,
       forgeProgress,
       forgeProgressDetail,
       forgeError,
       setApiKey,
+      setOpenaiKey,
+      setReplicateKey,
+      setAnthropicKey,
+      setImageProvider,
+      setImageModel,
+      setGenerateImages,
       setSelectedModel,
+      setSelectedEngine,
       setActiveTheme,
       createProject,
       deleteProject,

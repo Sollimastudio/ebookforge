@@ -36,8 +36,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
     createProject, deleteProject, renameProject,
     activeTheme, setActiveTheme,
     apiKey, setApiKey, forgeStatus, cancelForge,
-    importSingleProject, importMultipleProjects
+    importSingleProject, importMultipleProjects,
+    selectedEngine, setSelectedEngine,
+    openaiKey, setOpenaiKey,
+    replicateKey, setReplicateKey,
+    anthropicKey, setAnthropicKey,
+    imageProvider, setImageProvider,
+    setImageModel,
+    generateImages, setGenerateImages,
   } = useEbook();
+  const [showPremiumApis, setShowPremiumApis] = useState(false);
   
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -224,14 +232,53 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
 
       {/* Settings Section */}
       <div className="sidebar-divider" />
-      
+
       <div className="sidebar-section-label">
         <Key size={12} /> ⚙️ Configurações
       </div>
-      
+
+      {/* Engine Selector */}
+      <div style={{ padding: '8px 12px 4px', fontSize: 11, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        Motor de IA
+      </div>
+      <div style={{ display: 'flex', gap: 6, padding: '0 12px 10px' }}>
+        <button
+          onClick={() => setSelectedEngine('ollama')}
+          style={{
+            flex: 1,
+            padding: '8px',
+            fontSize: 12,
+            borderRadius: 6,
+            cursor: 'pointer',
+            border: selectedEngine === 'ollama' ? '2px solid #10b981' : '1px solid #333',
+            background: selectedEngine === 'ollama' ? 'rgba(16,185,129,0.15)' : 'transparent',
+            color: 'inherit',
+          }}
+          title="Ollama local (grátis)"
+        >
+          💻 Ollama<br/><span style={{ fontSize: 10, opacity: 0.7 }}>Grátis</span>
+        </button>
+        <button
+          onClick={() => setSelectedEngine('openrouter')}
+          style={{
+            flex: 1,
+            padding: '8px',
+            fontSize: 12,
+            borderRadius: 6,
+            cursor: 'pointer',
+            border: selectedEngine === 'openrouter' ? '2px solid #6366f1' : '1px solid #333',
+            background: selectedEngine === 'openrouter' ? 'rgba(99,102,241,0.15)' : 'transparent',
+            color: 'inherit',
+          }}
+          title="OpenRouter premium (pago)"
+        >
+          🌐 OpenRouter<br/><span style={{ fontSize: 10, opacity: 0.7 }}>Premium</span>
+        </button>
+      </div>
+
       <div className="api-key-section">
-        <button 
-          className={`api-toggle ${apiKey ? 'has-key' : 'needs-key'}`} 
+        <button
+          className={`api-toggle ${apiKey ? 'has-key' : 'needs-key'}`}
           onClick={() => setShowApiInput(!showApiInput)}
         >
           {apiKey ? (
@@ -242,9 +289,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
         </button>
         {showApiInput && (
           <div className="api-input-wrap">
-            <input 
-              type="password" 
-              placeholder="Cole sua chave OpenRouter aqui..." 
+            <input
+              type="password"
+              placeholder="Cole sua chave OpenRouter aqui..."
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               className="api-input"
@@ -253,6 +300,100 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
           </div>
         )}
       </div>
+
+      {/* APIs Premium (imagens + alternativas) */}
+      <div style={{ padding: '8px 12px 4px' }}>
+        <button
+          onClick={() => setShowPremiumApis(!showPremiumApis)}
+          style={{
+            width: '100%',
+            padding: '8px 10px',
+            fontSize: 12,
+            borderRadius: 8,
+            cursor: 'pointer',
+            border: '1px dashed #555',
+            background: 'rgba(139,92,246,0.08)',
+            color: 'inherit',
+            textAlign: 'left',
+          }}
+        >
+          ✨ APIs Premium (imagens, Claude direto…) {showPremiumApis ? '▲' : '▼'}
+        </button>
+      </div>
+      {showPremiumApis && (
+        <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Toggle gerar imagens */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={generateImages}
+              onChange={(e) => setGenerateImages(e.target.checked)}
+            />
+            <span>🎨 Gerar capa ilustrada por IA</span>
+          </label>
+
+          {/* Provider de imagem */}
+          {generateImages && (
+            <>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>Provedor de imagem:</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={() => { setImageProvider('openai'); setImageModel('dall-e-3'); }}
+                  style={{
+                    flex: 1, padding: 6, fontSize: 11, borderRadius: 6, cursor: 'pointer',
+                    border: imageProvider === 'openai' ? '2px solid #10a37f' : '1px solid #333',
+                    background: imageProvider === 'openai' ? 'rgba(16,163,127,0.15)' : 'transparent',
+                    color: 'inherit',
+                  }}
+                >DALL-E 3<br/><span style={{ fontSize: 9, opacity: 0.7 }}>~$0.04/img</span></button>
+                <button
+                  onClick={() => { setImageProvider('replicate'); setImageModel('black-forest-labs/flux-schnell'); }}
+                  style={{
+                    flex: 1, padding: 6, fontSize: 11, borderRadius: 6, cursor: 'pointer',
+                    border: imageProvider === 'replicate' ? '2px solid #e11d48' : '1px solid #333',
+                    background: imageProvider === 'replicate' ? 'rgba(225,29,72,0.15)' : 'transparent',
+                    color: 'inherit',
+                  }}
+                >Flux<br/><span style={{ fontSize: 9, opacity: 0.7 }}>~$0.003/img</span></button>
+              </div>
+
+              {imageProvider === 'openai' && (
+                <input
+                  type="password"
+                  placeholder="Chave OpenAI (sk-...)"
+                  value={openaiKey}
+                  onChange={(e) => setOpenaiKey(e.target.value)}
+                  className="api-input"
+                />
+              )}
+              {imageProvider === 'replicate' && (
+                <input
+                  type="password"
+                  placeholder="Token Replicate (r8_...)"
+                  value={replicateKey}
+                  onChange={(e) => setReplicateKey(e.target.value)}
+                  className="api-input"
+                />
+              )}
+              <p style={{ fontSize: 10, opacity: 0.6, margin: 0 }}>
+                🔒 Chave salva só no teu Mac.{' '}
+                {imageProvider === 'openai' && <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Obter chave →</a>}
+                {imageProvider === 'replicate' && <a href="https://replicate.com/account/api-tokens" target="_blank" rel="noopener">Obter token →</a>}
+              </p>
+            </>
+          )}
+
+          {/* Claude direto (opcional) */}
+          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>Claude direto (opcional):</div>
+          <input
+            type="password"
+            placeholder="Chave Anthropic (sk-ant-...)"
+            value={anthropicKey}
+            onChange={(e) => setAnthropicKey(e.target.value)}
+            className="api-input"
+          />
+        </div>
+      )}
 
       {/* Themes */}
       <div className="sidebar-section-label">

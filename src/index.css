@@ -354,25 +354,40 @@ body {
    ============================================= */
 .app-root {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
 }
 
-.main-content {
+.main-content,
+.main-area {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--bg);
+  padding: 1.5rem 2rem;
+}
+
+.sidebar-wrapper {
+  width: 280px;
+  flex-shrink: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--bg-2, #0f0f10);
 }
 
 /* =============================================
    SIDEBAR
    ============================================= */
 .sidebar {
-  display: none;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
 }
 
 .sidebar-logo {
@@ -698,11 +713,11 @@ body {
    TOOLBAR
    ============================================= */
 .editor-wrapper {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  padding: 0.75rem 1.5rem 0;
+  overflow: visible;
+  padding: 0.75rem 1.5rem 2rem;
+  min-height: 0;
 }
 
 .toolbar {
@@ -3575,3 +3590,120 @@ body {
 }
 
 .model-custom-input::placeholder { color: var(--text-muted); }
+
+/* ============================================================
+   MOBILE RESPONSIVE — Patch 3
+   Sidebar vira drawer, conteudo adapta em telas pequenas
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .sidebar-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    width: 85vw;
+    max-width: 340px;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.4);
+  }
+
+  .sidebar-wrapper.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+  }
+
+  .sidebar-backdrop.visible {
+    display: block;
+  }
+
+  .mobile-menu-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 1001;
+    background: var(--bg-2, #1a1a1a);
+    border: 1px solid var(--border, #333);
+    border-radius: 8px;
+    padding: 10px;
+    color: var(--text, #fff);
+    cursor: pointer;
+  }
+
+  .main-content,
+  .app-main,
+  .editor-main {
+    margin-left: 0 !important;
+    padding: 56px 12px 12px !important;
+  }
+
+  .forge-container,
+  .forge-dashboard,
+  .editor-container,
+  .preview-container,
+  .settings-panel {
+    padding: 12px !important;
+  }
+
+  .forge-hero h1 {
+    font-size: 1.6rem !important;
+    line-height: 1.25;
+  }
+
+  .api-input,
+  .api-input-field,
+  .model-custom-input {
+    font-size: 16px !important; /* evita zoom automatico no iOS */
+  }
+
+  .engine-selector {
+    flex-direction: column !important;
+  }
+
+  .themes-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .forge-themes {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-menu-toggle { display: none !important; }
+  .sidebar-backdrop { display: none !important; }
+}
+
+/* ============================================================
+   COVER HERO IMAGE (imagem gerada por IA)
+   ============================================================ */
+.cover-hero-image {
+  width: 100%;
+  max-width: 680px;
+  height: auto;
+  margin: 0 auto 2rem;
+  display: block;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.2);
+  object-fit: cover;
+  aspect-ratio: 1 / 1;
+}
+
+@media (max-width: 768px) {
+  .cover-hero-image {
+    max-width: 100%;
+    border-radius: 12px;
+  }
+}

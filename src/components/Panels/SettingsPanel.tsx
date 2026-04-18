@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Key, Palette, Sun, Moon, Sparkles, Sunset, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Key, Palette, Sun, Moon, Sparkles, Sunset, Check, AlertCircle, Server, Cloud } from 'lucide-react';
 import { useEbook, type Theme } from '../../context/EbookContext';
 
 const THEMES: { id: Theme; label: string; icon: React.ReactNode; preview: string; description: string }[] = [
@@ -34,10 +34,15 @@ const THEMES: { id: Theme; label: string; icon: React.ReactNode; preview: string
 ];
 
 export const SettingsPanel: React.FC = () => {
-  const { apiKey, setApiKey, activeTheme, setActiveTheme } = useEbook();
+  const { apiKey, setApiKey, activeTheme, setActiveTheme, selectedEngine, setSelectedEngine } = useEbook();
   const [showApiInput, setShowApiInput] = useState(false);
   const [tempApiKey, setTempApiKey] = useState(apiKey);
   const [apiKeySaved, setApiKeySaved] = useState(false);
+
+  // BUGFIX: sincroniza tempApiKey sempre que apiKey mudar (ex: salvo pela Sidebar)
+  useEffect(() => {
+    setTempApiKey(apiKey);
+  }, [apiKey]);
 
   const handleSaveApiKey = () => {
     setApiKey(tempApiKey);
@@ -53,6 +58,64 @@ export const SettingsPanel: React.FC = () => {
   return (
     <div className="settings-panel">
       <div className="settings-container">
+        {/* Engine Selector Section */}
+        <div className="settings-section">
+          <div className="section-header-settings">
+            <Server size={20} />
+            <h3>Motor de IA</h3>
+          </div>
+          <p className="section-description">
+            Escolha entre IA local (grátis, roda no seu Mac via Ollama) ou IA premium (paga, via OpenRouter).
+          </p>
+          <div className="engine-selector" style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+            <button
+              className={`btn-settings-action ${selectedEngine === 'openrouter' ? 'active' : ''}`}
+              onClick={() => setSelectedEngine('openrouter')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                border: selectedEngine === 'openrouter' ? '2px solid #6366f1' : '1px solid #333',
+                background: selectedEngine === 'openrouter' ? 'rgba(99,102,241,0.1)' : 'transparent',
+                cursor: 'pointer',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <Cloud size={16} />
+              <span>OpenRouter (Premium)</span>
+            </button>
+            <button
+              className={`btn-settings-action ${selectedEngine === 'ollama' ? 'active' : ''}`}
+              onClick={() => setSelectedEngine('ollama')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                border: selectedEngine === 'ollama' ? '2px solid #10b981' : '1px solid #333',
+                background: selectedEngine === 'ollama' ? 'rgba(16,185,129,0.1)' : 'transparent',
+                cursor: 'pointer',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <Server size={16} />
+              <span>Ollama (Local, Grátis)</span>
+            </button>
+          </div>
+          {selectedEngine === 'ollama' && (
+            <p className="api-hint" style={{ marginTop: 10 }}>
+              💡 Certifique-se que o Ollama está rodando e que você executou no terminal:
+              <br />
+              <code>launchctl setenv OLLAMA_ORIGINS "*"</code>
+            </p>
+          )}
+        </div>
+
         {/* API Key Section */}
         <div className="settings-section">
           <div className="section-header-settings">
