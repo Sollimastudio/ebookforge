@@ -46,6 +46,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
     generateImages, setGenerateImages,
   } = useEbook();
   const [showPremiumApis, setShowPremiumApis] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState('');
   
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -67,12 +69,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
   const handleImportProject = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
     try {
-      const project = await importProjectFromFile(file);
+      setIsImporting(true);
+      setImportProgress('📂 Lendo arquivo...');
+      
+      // Tentar importação com IA se API key disponível
+      const project = await importProjectFromFile(file, apiKey, (message) => {
+        setImportProgress(message);
+      });
+      
+      setImportProgress('✅ Concluído!');
       importSingleProject(project);
-      alert(`✅ Projeto "${project.title}" importado com sucesso!`);
+      
+      setTimeout(() => {
+        const format = file.name.split('.').pop()?.toUpperCase() || 'arquivo';
+        const conversionNote = file.name.endsWith('.json') || file.name.endsWith('.ebookforge') ? '' : '\n🤖 Convertido com IA';
+        alert(`✅ Projeto "${project.title}" importado com sucesso!\n(Formato: ${format})${conversionNote}`);
+        setIsImporting(false);
+      }, 500);
     } catch (err) {
-      alert(`❌ Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`);
+      setIsImporting(false);
+      const errorMsg = err instanceof Error ? err.message : 'Desconhecido';
+      
+      // Se erro mencionado chave API, oferecer setting
+      if (errorMsg.includes('OpenRouter')) {
+        const shouldConfigure = confirm(
+          `❌ ${errorMsg}\n\nDeseja configurar a chave OpenRouter agora para suportar conversão automática de TXT, MD e PDF?`
+        );
+        if (shouldConfigure) {
+          setShowApiInput(true);
+        }
+      } else {
+        alert(`❌ Erro: ${errorMsg}`);
+      }
     } finally {
       e.target.value = '';
     }
@@ -505,7 +535,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
       <input 
         ref={importFileRef}
         type="file" 
-        accept=".ebookforge,.json" 
+        accept=".ebookforge,.json,.txt,.md,.markdown,.pdf"
         onChange={handleImportProject}
         style={{ display: 'none' }}
       />
@@ -516,6 +546,84 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
         onChange={handleImportBackup}
         style={{ display: 'none' }}
       />
+
+      {/* Loading Modal for Import/Conversion */}
+      {isImporting && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          backdropFilter: 'blur(2px)',
+        }}>
+          <div style={{
+            background: '#1a1a2e',
+            borderRadius: 12,
+            padding: 24,
+            maxWidth: 400,
+            textAlign: 'center',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          }}>
+            <div style={{
+              fontSize: 32,
+              marginBottom: 16,
+              animation: 'spin 2s linear infinite',
+            }}>
+              🤖
+            </div>
+            <div style={{
+              fontSize: 16,
+              fontWeight: 600,
+              marginBottom: 8,
+              color: '#fff',
+            }}>
+              Convertendo Documento
+            </div>
+            <div style={{
+              fontSize: 13,
+              color: '#aaa',
+              marginBottom: 16,
+              minHeight: 40,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              {importProgress}
+            </div>
+            <div style={{
+              width: '100%',
+              height: 3,
+              background: 'rgba(255,255,255,0.1)',
+              borderRadius: 2,
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%',
+                background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+                animation: 'progress 2s ease-in-out infinite',
+                width: '100%',
+              }} />
+            </div>
+            <style>{`
+              @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+              @keyframes progress {
+                0%, 100% { width: 0; }
+                50% { width: 100%; }
+              }
+            `}</style>
+          </div>
+        </div>
+      )}
     </aside>
   );
 };

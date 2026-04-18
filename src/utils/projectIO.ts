@@ -1,4 +1,5 @@
 import type { EbookProject } from '../context/EbookContext';
+import { convertDocumentToHtml, isValidProjectJson, extractFileTitle } from '../services/documentConverter';
 
 /**
  * Exporta um projeto como arquivo JSON
@@ -30,80 +31,93 @@ export const exportProjectsToFile = (projects: EbookProject[]): void => {
 };
 
 /**
- * Importa um projeto a partir de um arquivo JSON
+ * Importa um projeto a partir de um arquivo (JSON, TXT, MD, PDF)
+ * Se for JSON válido, carrega direto. Se não, tenta conversão via IA se apiKey fornecida.
  */
-export const importProjectFromFile = async (file: File): Promise<EbookProject> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+export const importProjectFromFile = async (
+  file: File,
+  apiKey?: string,
+  onProgress?: (message: string) => void
+): Promise<EbookProject> => {
+  // Primeiro, tentar ler como texto
+  const fileContent = await file.text();
 
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const data = JSON.parse(content);
+  // Se é JSON válido, processar como antes
+  if (isValidProjectJson(fileContent)) {
+    try {
+      onProgress?.('📂 Carregando JSON...');
+      const data = JSON.parse(fileContent);
+      const project: EbookProject = {
+        id: `imported_${Date.now()}`,
+        title: data.title,
+        content: data.content,
+        createdAt: data.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      };
+      onProgress?.('✅ JSON carregado!');
+      return project;
+    } catch (err) {
+      throw new Error('Erro ao processar arquivo JSON: ' + (err instanceof Error ? err.message : 'desconhecido'));
+    }
+  }
 
-        // Validar se é um projeto único
-        if (data.id && data.title && data.content !== undefined) {
-          const project: EbookProject = {
-            id: `imported_${Date.now()}`,
-            title: data.title,
-            content: data.content,
-            createdAt: data.createdAt || Date.now(),
-            updatedAt: Date.now(),
-          };
-          resolve(project);
-        }
-        // Ou se é um backup com múltiplos projetos
-        else if (Array.isArray(data.projects)) {
-          reject(new Error('Arquivo contém múltiplos projetos. Use "Importar Backup" para carregar todos.'));
-        } else {
-          reject(new Error('Formato de arquivo inválido.'));
-        }
-      } catch (err) {
-        reject(new Error('Erro ao ler o arquivo: ' + (err instanceof Error ? err.message : 'desconhecido')));
-      }
+  // Não é JSON válido. Tentar conversão via IA se apiKey fornecida
+  if (!apiKey) {
+    throw new Error(
+      'Arquivo não é JSON válido. Configure a chave OpenRouter nas configurações para converter automaticamente Markdown, TXT ou PDF.'
+    );
+  }
+
+  try {
+    // Converter usando IA
+    const htmlContent = await convertDocumentToHtml(file, apiKey, onProgress);
+
+    if (htmlContent === 'JSON_VALID') {
+      // Nunca vai chegar aqui porque já validamos JSON acima
+      throw new Error('JSON inválido detectado');
+    }
+
+    const title = extractFileTitle(file.name);
+    const project: EbookProject = {
+      id: `imported_${Date.now()}`,
+      title,
+      content: htmlContent,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
 
-    reader.onerror = () => {
-      reject(new Error('Erro ao ler o arquivo.'));
-    };
+    onProgress?.('✅ Documento convertido!');
+    return project;
 
-    reader.readAsText(file);
-  });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Desconhecido';
+    throw new Error(`Erro ao converter documento: ${message}`);
+  }
 };
 
 /**
- * Importa múltiplos projetos a partir de um arquivo JSON
+ * Importa múltiplos projetos a partir de um arquivo de backup
  */
 export const importBackupFile = async (file: File): Promise<EbookProject[]> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+  const fileContent = await file.text();
 
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const data = JSON.parse(content);
+  try {
+    const data = JSON.parse(fileContent);
 
-        if (Array.isArray(data.projects)) {
-          const importedProjects = data.projects.map((p: any) => ({
-            id: `imported_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            title: p.title,
-            content: p.content,
-            createdAt: p.createdAt || Date.now(),
-            updatedAt: Date.now(),
-          }));
-          resolve(importedProjects);
-        } else {
-          reject(new Error('Arquivo de backup inválido.'));
-        }
-      } catch (err) {
-        reject(new Error('Erro ao ler o backup: ' + (err instanceof Error ? err.message : 'desconhecido')));
-      }
-    };
-
-    reader.onerror = () => {
-      reject(new Error('Erro ao ler o arquivo.'));
-    };
-
-    reader.readAsText(file);
-  });
+    if (Array.isArray(data.projects)) {
+      const importedProjects = data.projects.map((p: any) => ({
+        id: `imported_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        title: p.title,
+        content: p.content,
+        createdAt: p.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      }));
+      return importedProjects;
+    } else {
+      throw new Error('Arquivo de backup inválido.');
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'desconhecido';
+    throw new Error(`Erro ao ler o backup: ${message}`);
+  }
 };
