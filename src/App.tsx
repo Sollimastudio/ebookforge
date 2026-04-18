@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
+import { Menu } from 'lucide-react';
 import { EbookProvider, useEbook } from './context/EbookContext';
 import { EbookEditor } from './components/Editor/EbookEditor';
 import { Sidebar } from './components/Sidebar/Sidebar';
@@ -10,6 +11,7 @@ export type AppView = 'forge' | 'editor';
 function AppInner() {
   const { activeProject, activeTheme, forgeStatus, setActiveProjectId } = useEbook();
   const [view, setView] = useState<AppView>('forge');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Quando a forja termina, vai automaticamente para o editor
   useEffect(() => {
@@ -137,14 +139,30 @@ ${activeProject.content}
     }
   }, [activeProject]);
 
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
   return (
     <div className={`app-root theme-${activeTheme}`}>
-      <Sidebar
-        onExportPDF={handleExportPDF}
-        onExportHTML={handleExportHTML}
-        currentView={view}
-        onNavigate={navigateTo}
+      <button
+        className="mobile-menu-toggle"
+        onClick={() => setSidebarOpen(o => !o)}
+        aria-label="Abrir menu"
+        style={{ display: 'none' }}
+      >
+        <Menu size={20} />
+      </button>
+      <div
+        className={`sidebar-backdrop ${sidebarOpen ? 'visible' : ''}`}
+        onClick={closeSidebar}
       />
+      <div className={sidebarOpen ? 'sidebar-wrapper open' : 'sidebar-wrapper'}>
+        <Sidebar
+          onExportPDF={handleExportPDF}
+          onExportHTML={handleExportHTML}
+          currentView={view}
+          onNavigate={(v, id) => { navigateTo(v, id); closeSidebar(); }}
+        />
+      </div>
       <main className="main-area">
         {view === 'forge' ? (
           <ForgeDashboard />

@@ -4,7 +4,7 @@ import {
   ChevronDown, Zap, Crown, Loader2, X, CheckCircle2
 } from 'lucide-react';
 import { useEbook, type Theme } from '../../context/EbookContext';
-import { AVAILABLE_MODELS } from '../../services/openrouter';
+import { ALL_MODELS as AVAILABLE_MODELS } from '../../services/aiEngine';
 
 // 4 temas premium para seleção na forja
 const FORGE_THEMES: { id: Theme; label: string; desc: string; preview: string; accent: string }[] = [
@@ -46,6 +46,7 @@ export const ForgeDashboard = () => {
     forgeStatus, forgeError, forgeProgress, forgeProgressDetail,
     resetForge, cancelForge,
     apiKey, selectedModel, setSelectedModel,
+    selectedEngine,
   } = useEbook();
 
   const [inputMode, setInputMode] = useState<InputMode>('paste');
@@ -116,13 +117,22 @@ export const ForgeDashboard = () => {
         </p>
       </div>
 
-      {/* ── AVISO DE API KEY ─────────────────────────────────────────────── */}
-      {!apiKey && (
+      {/* ── AVISO DE API KEY (só se motor = openrouter) ───────────────────── */}
+      {selectedEngine === 'openrouter' && !apiKey && (
         <div className="forge-api-warning">
           <AlertCircle size={18} />
           <div>
             <strong>API Key necessária</strong>
-            <p>Configure sua chave OpenRouter na barra lateral (ícone de chave 🔑) para ativar a IA.</p>
+            <p>Configure sua chave OpenRouter na barra lateral (ícone de chave 🔑) ou troque o motor para Ollama Local nas Configurações.</p>
+          </div>
+        </div>
+      )}
+      {selectedEngine === 'ollama' && (
+        <div className="forge-api-warning" style={{ background: 'rgba(16,185,129,0.1)', borderColor: '#10b981' }}>
+          <CheckCircle2 size={18} color="#10b981" />
+          <div>
+            <strong>Motor Local Ativo</strong>
+            <p>Usando Ollama local (grátis). Certifique-se que o Ollama está rodando no teu Mac.</p>
           </div>
         </div>
       )}
