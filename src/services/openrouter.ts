@@ -19,7 +19,12 @@ export const AVAILABLE_MODELS = [
   { id: 'anthropic/claude-3.7-sonnet-20250219',     label: 'Claude 3.7 Sonnet (Mais Recente)',          speed: 'balanced' },
   { id: 'openai/gpt-4o-mini',                       label: 'GPT-4o Mini (Alternativa Rápida)',          speed: 'fast' },
   { id: 'google/gemini-flash-1.5',                  label: 'Gemini Flash 1.5 (Alternativa Econômica)',  speed: 'fast' },
+  { id: 'local/llama3.2:1b',                        label: 'Llama 3.2 1B (Local / Gratuito)',           speed: 'fast' },
 ] as const;
+
+const LOCAL_MODEL_PREFIX = 'local/';
+const LOCAL_API_BASE = 'http://localhost:4000/v1';
+const LOCAL_API_KEY = '123456';
 
 export const DEFAULT_MODEL = 'anthropic/claude-3.5-sonnet-20241022';
 const DEFAULT_TIMEOUT = 180000; // 3 minutos
@@ -33,7 +38,9 @@ export async function callOpenRouter(
   config: OpenRouterConfig,
   signal?: AbortSignal
 ): Promise<string> {
-  if (!config.apiKey) {
+  const isLocal = config.model?.startsWith(LOCAL_MODEL_PREFIX);
+
+  if (!isLocal && !config.apiKey) {
     throw new Error('Chave de API do OpenRouter não configurada.');
   }
 
@@ -47,17 +54,20 @@ export async function callOpenRouter(
 
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+  const apiBase = isLocal ? LOCAL_API_BASE : 'https://openrouter.ai/api/v1';
+  const apiKey = isLocal ? LOCAL_API_KEY : config.apiKey;
+  const modelId = isLocal ? config.model!.replace(LOCAL_MODEL_PREFIX, 'ollama/') : (config.model || DEFAULT_MODEL);
+
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch(`${apiBase}/chat/completions`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://ebookforge.app',
-        'X-Title': 'EbookForge Premium',
+        ...(isLocal ? {} : { 'HTTP-Referer': 'https://ebookforge.app', 'X-Title': 'EbookForge Premium' }),
       },
       body: JSON.stringify({
-        model: config.model || DEFAULT_MODEL,
+        model: modelId,
         messages,
         temperature: 0.72,
         max_tokens: maxTokens,
