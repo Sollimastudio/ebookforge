@@ -6,7 +6,7 @@ import {
   BookOpen, Plus, Trash2, Pencil, Check, X,
   Palette, Sun, Moon, Sparkles, Sunset,
   Download, FileText, ChevronRight, Key, LayoutDashboard, AlertCircle, Upload,
-  TreePine, Waves, Heart, Star, Flame, Crown, Cloud
+  TreePine, Waves, Heart, Star, Flame, Crown, Cloud, Megaphone
 } from 'lucide-react';
 
 const THEMES: { id: Theme; label: string; icon: React.ReactNode; preview: string }[] = [
@@ -64,6 +64,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
 
   const handleGoForge = () => {
     onNavigate('forge');
+  };
+
+  const handleGoMarketing = () => {
+    onNavigate('marketing');
   };
 
   const handleImportProject = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,14 +189,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
           <span className="btn-sidebar-nav-title">Criar com IA</span>
           <span className="btn-sidebar-nav-desc">Manuscrito (texto ou PDF) → ebook novo</span>
         </button>
-        <button 
-          className="btn-sidebar-nav" 
+        <button
+          className="btn-sidebar-nav"
           onClick={handleNew}
           title="Página em branco para escrever ou colar à mão, sem gerar capítulos por IA"
         >
           <Plus size={14} />
           <span className="btn-sidebar-nav-title">Projeto vazio</span>
           <span className="btn-sidebar-nav-desc">Editor manual — não é o passo da IA</span>
+        </button>
+        <button
+          className={`btn-sidebar-nav ${currentView === 'marketing' ? 'active' : ''}`}
+          onClick={handleGoMarketing}
+          title="Gerar copy de vendas, carrosséis, emails e posts para o ebook ativo"
+        >
+          <Megaphone size={14} />
+          <span className="btn-sidebar-nav-title">Kit de Marketing</span>
+          <span className="btn-sidebar-nav-desc">Copy, carrossel, email e posts prontos</span>
         </button>
       </div>
 

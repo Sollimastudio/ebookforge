@@ -4,9 +4,10 @@ import { EbookProvider, useEbook } from './context/EbookContext';
 import { EbookEditor } from './components/Editor/EbookEditor';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { ForgeDashboard } from './components/Forge/ForgeDashboard';
+import { MarketingPanel } from './components/Panels/MarketingPanel';
 import './index.css';
 
-export type AppView = 'forge' | 'editor';
+export type AppView = 'forge' | 'editor' | 'marketing';
 
 function AppInner() {
   const { activeProject, activeTheme, forgeStatus, setActiveProjectId } = useEbook();
@@ -56,6 +57,14 @@ function AppInner() {
     [data-callout="warning"] { background: #fffbeb; border-color: #f59e0b; }
     [data-callout="danger"] { background: #fff1f2; border-color: #ef4444; }
     .callout strong, [data-callout] strong { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .premium-callout { padding: 1.25rem 1.5rem; border-left: 5px solid #22c55e; background: #f0fdf4; border-radius: 0 12px 12px 0; margin: 2em 0; }
+    .premium-callout strong { display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 0.5rem; }
+    .author-insight-box { padding: 1.5rem 2rem; border-radius: 12px; border: 1px solid #e2e8f0; border-top: 3px solid #7c3aed; background: #fafafa; margin: 2em 0; font-style: italic; }
+    .author-insight-box strong { display: block; font-style: normal; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #7c3aed; margin-bottom: 0.5rem; }
+    .action-step { padding: 1.25rem 1.5rem; border: 1px solid #2563eb; border-radius: 12px; background: #eff6ff; margin: 2em 0; }
+    .action-step strong { display: block; font-weight: 700; color: #1d4ed8; margin-bottom: 0.5rem; }
+    .fixation-exercise { padding: 1.5rem 2rem; border: 2px dashed #f59e0b; border-radius: 12px; background: #fffbeb; margin: 2em 0; }
+    .fixation-exercise strong { display: block; font-weight: 700; margin-bottom: 0.5rem; }
     .day-entry { border: 1px solid #e2e8f0; border-radius: 12px; margin: 2rem 0; overflow: hidden; }
     .day-header { padding: 1.5rem 2rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
     .day-badge { display: inline-block; padding: 0.25rem 0.75rem; background: #2563eb; color: white; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.5rem; }
@@ -166,6 +175,8 @@ ${activeProject.content}
       <main className="main-area">
         {view === 'forge' ? (
           <ForgeDashboard />
+        ) : view === 'marketing' ? (
+          <MarketingPanel />
         ) : (
           activeProject ? (
             <>

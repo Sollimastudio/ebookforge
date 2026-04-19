@@ -14,6 +14,7 @@ export interface EbookProject {
   id: string;
   title: string;
   content: string;
+  theme?: Theme;
   createdAt: number;
   updatedAt: number;
 }
@@ -140,7 +141,7 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     return [createDefaultProject()];
   });
 
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(() => {
+  const [activeProjectId, setActiveProjectIdState] = useState<string | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -220,6 +221,19 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem(THEME_KEY, theme);
   }, []);
 
+  /** Muda o projeto ativo e aplica o tema associado a ele, se houver. */
+  const setActiveProjectId = useCallback((id: string) => {
+    setActiveProjectIdState(id);
+    setProjects(prev => {
+      const project = prev.find(p => p.id === id);
+      if (project?.theme) {
+        setActiveThemeState(project.theme);
+        localStorage.setItem(THEME_KEY, project.theme);
+      }
+      return prev;
+    });
+  }, []);
+
   const createProject = useCallback((title: string): EbookProject => {
     const newProject: EbookProject = {
       id: `ebook_${Date.now()}`,
@@ -229,7 +243,7 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       updatedAt: Date.now(),
     };
     setProjects(prev => [...prev, newProject]);
-    setActiveProjectId(newProject.id);
+    setActiveProjectIdState(newProject.id);
     return newProject;
   }, []);
 
@@ -503,21 +517,21 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       ].join('\n');
 
       const newId = `ebook_forge_${Date.now()}`;
+      const resolvedTheme = targetTheme || activeTheme;
       const newProject: EbookProject = {
         id: newId,
         title: blueprint.title,
         content: finalContent,
+        theme: resolvedTheme,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
 
       setProjects(prev => [...prev, newProject]);
-      setActiveProjectId(newId);
+      setActiveProjectIdState(newId);
 
-      // Aplica o tema escolhido
-      if (targetTheme) {
-        setActiveTheme(targetTheme);
-      }
+      // Aplica o tema escolhido ao estado global
+      setActiveTheme(resolvedTheme);
 
       setForgeStatus('finished');
       setForgeProgress(100);
@@ -525,12 +539,14 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
 
     } catch (err: any) {
       if (err.message === 'Operação cancelada.' || controller.signal.aborted) return;
+      setForgeProgress(0);
+      setForgeProgressDetail(null);
       setForgeStatus('error');
       setForgeError(err.message || 'Erro inesperado. Tente novamente.');
     } finally {
       setAbortController(null);
     }
-  }, [openRouterApiKeyEffective, apiKey, selectedModel, selectedEngine, setActiveTheme, generateImages, imageProvider, imageModel, openaiKey, replicateKey]);
+  }, [openRouterApiKeyEffective, apiKey, selectedModel, selectedEngine, setActiveTheme, activeTheme, generateImages, imageProvider, imageModel, openaiKey, replicateKey]);
 
   const forgeEbook = useCallback(async (file: File, theme?: Theme) => {
     if (selectedEngine === 'openrouter' && !openRouterApiKeyEffective) {
@@ -576,12 +592,12 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
 
   const importSingleProject = useCallback((project: EbookProject) => {
     setProjects(prev => [...prev, project]);
-    setActiveProjectId(project.id);
+    setActiveProjectIdState(project.id);
   }, []);
 
   const importMultipleProjects = useCallback((newProjects: EbookProject[]) => {
     setProjects(prev => [...prev, ...newProjects]);
-    if (newProjects.length > 0) setActiveProjectId(newProjects[0].id);
+    if (newProjects.length > 0) setActiveProjectIdState(newProjects[0].id);
   }, []);
 
   const activeProject = projects.find(p => p.id === activeProjectId) ?? projects[0] ?? null;

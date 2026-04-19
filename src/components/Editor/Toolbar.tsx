@@ -7,8 +7,11 @@ import {
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Highlighter, Code, Undo, Redo,
   Lightbulb, AlertTriangle, Info, AlertCircle,
-  Type
+  Type, ImagePlus, Wand2, Loader2
 } from 'lucide-react';
+import { useEbook } from '../../context/EbookContext';
+import { generateImage } from '../../services/imageGen';
+import { callAI } from '../../services/aiEngine';
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -63,8 +66,77 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
   const [showHighlights, setShowHighlights] = React.useState(false);
   const [showTextColors, setShowTextColors] = React.useState(false);
   const [showCallouts, setShowCallouts] = React.useState(false);
+  const [showAIImage, setShowAIImage] = React.useState(false);
+  const [aiImagePrompt, setAiImagePrompt] = React.useState('');
+  const [aiImageLoading, setAiImageLoading] = React.useState(false);
+  const [aiImageError, setAiImageError] = React.useState<string | null>(null);
+  const [aiRewriteLoading, setAiRewriteLoading] = React.useState(false);
+
+  const {
+    imageProvider, openaiKey, replicateKey, imageModel,
+    selectedEngine, openRouterApiKeyEffective, apiKey, selectedModel,
+  } = useEbook();
 
   if (!editor) return null;
+
+  const handleAIImage = async () => {
+    if (!aiImagePrompt.trim() || aiImageLoading) return;
+    const imgKey = imageProvider === 'openai' ? openaiKey : replicateKey;
+    if (imageProvider === 'none' || !imgKey) {
+      setAiImageError('Configure DALL-E (OpenAI) ou Replicate nas Configurações para gerar imagens.');
+      return;
+    }
+    setAiImageLoading(true);
+    setAiImageError(null);
+    try {
+      const result = await generateImage(aiImagePrompt, {
+        provider: imageProvider,
+        apiKey: imgKey,
+        model: imageModel,
+        size: '1024x1024',
+      });
+      editor.chain().focus().setImage({ src: result.url, alt: aiImagePrompt }).run();
+      setShowAIImage(false);
+      setAiImagePrompt('');
+    } catch (err: any) {
+      setAiImageError(err.message || 'Erro ao gerar imagem. Tente novamente.');
+    } finally {
+      setAiImageLoading(false);
+    }
+  };
+
+  const handleAIRewrite = async () => {
+    const { from, to } = editor.state.selection;
+    if (from === to) {
+      alert('Selecione um trecho de texto para reescrever.');
+      return;
+    }
+    const selectedText = editor.state.doc.textBetween(from, to, ' ');
+    if (!selectedText.trim() || selectedText.trim().length < 20) {
+      alert('Selecione pelo menos 20 caracteres para reescrever.');
+      return;
+    }
+    const effectiveKey = openRouterApiKeyEffective || apiKey;
+    if (selectedEngine === 'openrouter' && !effectiveKey) {
+      alert('Configure sua chave OpenRouter nas Configurações para usar a reescrita com IA.');
+      return;
+    }
+    setAiRewriteLoading(true);
+    try {
+      const rewritten = await callAI(
+        [{
+          role: 'user',
+          content: `Reescreva o seguinte trecho melhorando a clareza, fluidez e impacto. Preserve o significado original, o idioma e o tom do autor. Responda APENAS com o texto reescrito, sem aspas, sem explicações, sem prefixos.\n\nTEXTO ORIGINAL:\n${selectedText}`
+        }],
+        { engine: selectedEngine, apiKey: effectiveKey, model: selectedModel, timeout: 30000, maxTokens: 1500 }
+      );
+      editor.chain().focus().insertContentAt({ from, to }, rewritten.trim()).run();
+    } catch (err: any) {
+      alert('Erro ao reescrever: ' + (err.message || 'Tente novamente.'));
+    } finally {
+      setAiRewriteLoading(false);
+    }
+  };
 
   const insertImage = () => {
     const input = document.createElement('input');
@@ -274,6 +346,52 @@ export const Toolbar = ({ editor }: ToolbarProps) => {
       <ToolbarBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Linha Divisória">
         <Minus size={16} />
       </ToolbarBtn>
+
+      <ToolbarDivider />
+
+      {/* AI Rewrite */}
+      <ToolbarBtn
+        onClick={handleAIRewrite}
+        title="Reescrever seleção com IA (selecione um trecho primeiro)"
+        disabled={aiRewriteLoading}
+      >
+        {aiRewriteLoading ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+      </ToolbarBtn>
+
+      {/* AI Image Generator */}
+      <div className="toolbar-dropdown-wrap">
+        <ToolbarBtn
+          onClick={() => { setShowAIImage(!showAIImage); setAiImageError(null); }}
+          title="Gerar Ilustração com IA"
+          active={showAIImage}
+        >
+          <ImagePlus size={16} />
+        </ToolbarBtn>
+        {showAIImage && (
+          <div className="ai-image-panel">
+            <div className="color-picker-label">Gerar Ilustração com IA</div>
+            <textarea
+              className="ai-image-prompt"
+              placeholder="Ex: uma pessoa lendo em uma biblioteca com luz suave, estilo editorial, sem texto..."
+              value={aiImagePrompt}
+              onChange={e => setAiImagePrompt(e.target.value)}
+              rows={3}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAIImage(); }}
+            />
+            {aiImageError && <p className="ai-image-error">{aiImageError}</p>}
+            {imageProvider === 'none' && !aiImageError && (
+              <p className="ai-image-hint">Configure DALL-E ou Replicate nas Configurações (⚙️) para usar.</p>
+            )}
+            <button
+              className="ai-image-btn"
+              onClick={handleAIImage}
+              disabled={aiImageLoading || !aiImagePrompt.trim()}
+            >
+              {aiImageLoading ? <><Loader2 size={13} className="animate-spin" /> Gerando...</> : <><ImagePlus size={13} /> Gerar e Inserir</>}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

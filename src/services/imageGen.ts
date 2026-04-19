@@ -186,10 +186,13 @@ async function generateCustom(
  * Monta um prompt visual rico a partir do título e tema do ebook.
  */
 export function buildCoverPrompt(title: string, theme?: string): string {
-  const style = theme === 'branco-artico' ? 'minimalist editorial, clean white background, elegant serif typography, premium book design'
-              : theme === 'roxo-real'     ? 'royal purple and gold, luxurious, mystical, gradient lighting, premium'
-              : theme === 'por-do-sol'    ? 'warm sunset tones, orange and magenta gradient, dreamy, sophisticated'
-              : 'dark modern editorial, dramatic lighting, bold composition, premium';
+  const style = theme === 'arctic-white'  ? 'minimalist editorial, clean white background, elegant serif typography, premium book design, light and airy'
+              : theme === 'royal-purple'  ? 'royal purple and gold, luxurious, mystical, gradient lighting, ethereal, premium'
+              : theme === 'sunset-warm'   ? 'warm sunset tones, orange and magenta gradient, dreamy, golden hour, sophisticated'
+              : theme === 'forest-green'  ? 'lush green nature, organic textures, serene, editorial, premium'
+              : theme === 'ocean-blue'    ? 'deep ocean blues, fluid, ethereal, premium editorial, calming'
+              : theme === 'rose-pink'     ? 'soft rose and pink tones, elegant, feminine, editorial, premium'
+              : 'dark modern editorial, dramatic lighting, bold composition, cinematic, premium';
   return `Professional ebook cover illustration for "${title}". ${style}. High quality, 4k, detailed, magazine-grade, no text on image.`;
 }
 

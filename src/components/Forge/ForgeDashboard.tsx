@@ -7,13 +7,18 @@ import { useEbook, type Theme } from '../../context/EbookContext';
 import { ALL_MODELS as AVAILABLE_MODELS } from '../../services/aiEngine';
 
 // 4 temas premium para seleção na forja
-const FORGE_THEMES: { id: Theme; label: string; desc: string; preview: string; accent: string }[] = [
+const FORGE_THEMES: {
+  id: Theme; label: string; desc: string; preview: string; accent: string;
+  icon: string; tags: string[];
+}[] = [
   {
     id: 'obsidian-noir',
     label: 'Obsidian Noir',
     desc: 'Escuro, elegante, poderoso — para conteúdo de autoridade máxima',
     preview: '#0d0f12',
     accent: '#58a6ff',
+    icon: '◈',
+    tags: ['Tech', 'Dark', 'Autoridade'],
   },
   {
     id: 'arctic-white',
@@ -21,6 +26,8 @@ const FORGE_THEMES: { id: Theme; label: string; desc: string; preview: string; a
     desc: 'Limpo, editorial, sofisticado — para conteúdo premium e didático',
     preview: '#f8f9fa',
     accent: '#2563eb',
+    icon: '◻',
+    tags: ['Editorial', 'Clean', 'Didático'],
   },
   {
     id: 'royal-purple',
@@ -28,6 +35,8 @@ const FORGE_THEMES: { id: Theme; label: string; desc: string; preview: string; a
     desc: 'Místico, transformador, exclusivo — para conteúdo de alto impacto',
     preview: '#1a0533',
     accent: '#a855f7',
+    icon: '✦',
+    tags: ['Místico', 'Premium', 'Exclusivo'],
   },
   {
     id: 'sunset-warm',
@@ -35,6 +44,8 @@ const FORGE_THEMES: { id: Theme; label: string; desc: string; preview: string; a
     desc: 'Acolhedor, humano, magnético — para conteúdo emocional e motivacional',
     preview: '#1c1209',
     accent: '#f59e0b',
+    icon: '◉',
+    tags: ['Humano', 'Emocional', 'Motivacional'],
   },
 ];
 
@@ -205,10 +216,24 @@ export const ForgeDashboard = () => {
               onClick={() => setSelectedTheme(t.id)}
               style={{ '--theme-preview': t.preview, '--theme-accent': t.accent } as React.CSSProperties}
             >
-              <div className="theme-forge-preview" />
+              <div className="theme-forge-preview">
+                <span className="theme-forge-icon" style={{ color: t.accent }}>{t.icon}</span>
+                <div className="theme-forge-lines">
+                  <div style={{ background: t.accent }} />
+                  <div style={{ background: `${t.accent}99` }} />
+                  <div style={{ background: `${t.accent}55` }} />
+                </div>
+              </div>
               <div className="theme-forge-info">
                 <strong>{t.label}</strong>
                 <span>{t.desc}</span>
+                <div className="theme-forge-tags">
+                  {t.tags.map(tag => (
+                    <span key={tag} className="theme-forge-tag" style={{ borderColor: `${t.accent}55`, color: t.accent }}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
               {selectedTheme === t.id && <CheckCircle2 size={14} className="theme-check" />}
             </button>
@@ -250,14 +275,17 @@ export const ForgeDashboard = () => {
               value={pastedText}
               onChange={e => setPastedText(e.target.value)}
               rows={14}
-              disabled={openRouterBlocked}
             />
             {pastedText.length > 0 && (
               <div className="paste-stats">
                 <span>📝 {wordCount.toLocaleString()} palavras</span>
                 <span>·</span>
                 <span>{charCount.toLocaleString()} caracteres</span>
-                {wordCount > 500 && <span className="paste-ok">✓ Conteúdo suficiente</span>}
+                {wordCount > 500 && (
+                  <span className="paste-ok">
+                    <CheckCircle2 size={13} /> Pronto para Forjar
+                  </span>
+                )}
                 {wordCount > 0 && wordCount < 500 && <span className="paste-warn">⚠ Cole mais conteúdo para melhor resultado</span>}
               </div>
             )}
@@ -267,17 +295,25 @@ export const ForgeDashboard = () => {
                 className="btn-forge-main"
                 onClick={handleForge}
                 disabled={openRouterBlocked || pastedText.trim().length < 50}
+                title={openRouterBlocked ? 'Configure sua chave de API na barra lateral para liberar a geração' : undefined}
               >
                 <Sparkles size={18} />
                 {openRouterBlocked
-                  ? 'Configure a chave OpenRouter primeiro'
+                  ? 'Configure a chave de API na barra lateral (🔑)'
                   : pastedText.trim().length < 50
                     ? `Cole pelo menos 50 caracteres (faltam ${Math.max(0, 50 - pastedText.trim().length)})`
                     : 'Gerar ebook com IA — passo seguinte'}
               </button>
-              <p className="paste-cta-note">
-                O mesmo botão repete-se no fim da página. Use qualquer um.
-              </p>
+              {openRouterBlocked && (
+                <p className="paste-cta-api-hint">
+                  <AlertCircle size={13} /> Clique no ícone de chave 🔑 na barra lateral e cole sua chave OpenRouter — ou mude para o motor Ollama Local nas Configurações.
+                </p>
+              )}
+              {!openRouterBlocked && (
+                <p className="paste-cta-note">
+                  O mesmo botão repete-se no fim da página. Use qualquer um.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -333,10 +369,11 @@ export const ForgeDashboard = () => {
           className="btn-forge-main forge-footer-cta"
           onClick={handleForge}
           disabled={openRouterBlocked || pastedText.trim().length < 50}
+          title={openRouterBlocked ? 'Configure sua chave de API na barra lateral para liberar a geração' : undefined}
         >
           <Sparkles size={18} />
           {openRouterBlocked
-            ? 'Configure a API Key primeiro'
+            ? 'Configure a chave de API na barra lateral (🔑)'
             : pastedText.trim().length < 50
               ? 'Cole o manuscrito acima (mín. 50 caracteres)'
               : 'Gerar ebook com IA (repetir ação)'}
