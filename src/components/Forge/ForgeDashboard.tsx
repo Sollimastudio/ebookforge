@@ -45,9 +45,11 @@ export const ForgeDashboard = () => {
     forgeEbook, forgeEbookFromText,
     forgeStatus, forgeError, forgeProgress, forgeProgressDetail,
     resetForge, cancelForge,
-    apiKey, selectedModel, setSelectedModel,
+    openRouterApiKeyEffective, selectedModel, setSelectedModel,
     selectedEngine,
   } = useEbook();
+
+  const openRouterBlocked = selectedEngine === 'openrouter' && !openRouterApiKeyEffective;
 
   const [inputMode, setInputMode] = useState<InputMode>('paste');
   const [pastedText, setPastedText] = useState('');
@@ -118,12 +120,12 @@ export const ForgeDashboard = () => {
       </div>
 
       {/* ── AVISO DE API KEY (só se motor = openrouter) ───────────────────── */}
-      {selectedEngine === 'openrouter' && !apiKey && (
+      {openRouterBlocked && (
         <div className="forge-api-warning">
           <AlertCircle size={18} />
           <div>
             <strong>API Key necessária</strong>
-            <p>Configure sua chave OpenRouter na barra lateral (ícone de chave 🔑) ou troque o motor para Ollama Local nas Configurações.</p>
+            <p>Defina <code>VITE_OPENROUTER_API_KEY</code> no ficheiro <code>.env</code> na raiz do projeto (reinicie o servidor de desenvolvimento), ou configure a chave na barra lateral (ícone de chave 🔑). Também pode usar o motor Ollama Local nas Configurações.</p>
           </div>
         </div>
       )}
@@ -236,7 +238,7 @@ export const ForgeDashboard = () => {
               value={pastedText}
               onChange={e => setPastedText(e.target.value)}
               rows={14}
-              disabled={!apiKey}
+              disabled={openRouterBlocked}
             />
             {pastedText.length > 0 && (
               <div className="paste-stats">
@@ -253,8 +255,8 @@ export const ForgeDashboard = () => {
         {/* MODO: PDF */}
         {inputMode === 'pdf' && (
           <div
-            className={`drop-zone-compact ${isDragging ? 'dragging' : ''} ${!apiKey ? 'disabled' : ''}`}
-            onDragOver={e => { e.preventDefault(); if (apiKey) setIsDragging(true); }}
+            className={`drop-zone-compact ${isDragging ? 'dragging' : ''} ${openRouterBlocked ? 'disabled' : ''}`}
+            onDragOver={e => { e.preventDefault(); if (!openRouterBlocked) setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={onDrop}
           >
@@ -266,12 +268,12 @@ export const ForgeDashboard = () => {
               accept=".pdf"
               className="hidden-input"
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-              disabled={!apiKey}
+              disabled={openRouterBlocked}
             />
             <button
               className="btn-secondary"
               onClick={() => fileInputRef.current?.click()}
-              disabled={!apiKey}
+              disabled={openRouterBlocked}
             >
               Selecionar PDF
             </button>
@@ -298,10 +300,10 @@ export const ForgeDashboard = () => {
         <button
           className="btn-forge-main"
           onClick={handleForge}
-          disabled={!apiKey || pastedText.trim().length < 50}
+          disabled={openRouterBlocked || pastedText.trim().length < 50}
         >
           <Sparkles size={18} />
-          {!apiKey ? 'Configure a API Key primeiro' : pastedText.trim().length < 50 ? 'Cole seu manuscrito acima' : 'Forjar Ebook Agora'}
+          {openRouterBlocked ? 'Configure a API Key primeiro' : pastedText.trim().length < 50 ? 'Cole seu manuscrito acima' : 'Forjar Ebook Agora'}
         </button>
       )}
     </div>

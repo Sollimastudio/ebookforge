@@ -16,6 +16,8 @@ export const HomePanel: React.FC = () => {
     forgeStatus,
     cancelForge,
     apiKey,
+    openRouterApiKeyEffective,
+    selectedEngine,
     importSingleProject,
     importMultipleProjects,
   } = useEbook();
@@ -80,11 +82,13 @@ export const HomePanel: React.FC = () => {
     if (file) handlePdfUpload(file);
   };
 
+  const openRouterBlocked = selectedEngine === 'openrouter' && !openRouterApiKeyEffective;
+
   const handleImportProject = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const project = await importProjectFromFile(file);
+      const project = await importProjectFromFile(file, apiKey);
       importSingleProject(project);
       alert(`✅ Projeto "${project.title}" importado com sucesso!`);
     } catch (err) {
@@ -131,7 +135,7 @@ export const HomePanel: React.FC = () => {
       <div className="home-section">
         <h2 className="section-title">Criar Ebook a partir de PDF</h2>
         <div
-          className={`pdf-upload-zone ${isDraggingPdf ? 'dragging' : ''} ${forgeStatus !== 'idle' ? 'processing' : ''} ${!apiKey ? 'warning' : ''}`}
+          className={`pdf-upload-zone ${isDraggingPdf ? 'dragging' : ''} ${forgeStatus !== 'idle' ? 'processing' : ''} ${openRouterBlocked ? 'warning' : ''}`}
           onDragOver={(e) => {
             e.preventDefault();
             if (forgeStatus === 'idle') setIsDraggingPdf(true);
@@ -140,11 +144,11 @@ export const HomePanel: React.FC = () => {
           onDrop={onPdfDrop}
         >
           <div className="upload-content">
-            {!apiKey ? (
+            {openRouterBlocked ? (
               <>
                 <AlertCircle size={32} className="upload-icon warning" />
                 <h3>Configuração Necessária</h3>
-                <p>Vá para <strong>Configurações</strong> e insira sua chave OpenRouter para usar a IA.</p>
+                <p>Defina <strong>VITE_OPENROUTER_API_KEY</strong> no <strong>.env</strong> ou insira a chave OpenRouter em <strong>Configurações</strong> (motor OpenRouter).</p>
               </>
             ) : (
               <>
@@ -163,7 +167,7 @@ export const HomePanel: React.FC = () => {
             accept=".pdf"
             onChange={onPdfFileSelect}
             style={{ display: 'none' }}
-            disabled={forgeStatus !== 'idle' || !apiKey}
+            disabled={forgeStatus !== 'idle' || openRouterBlocked}
           />
         </div>
 

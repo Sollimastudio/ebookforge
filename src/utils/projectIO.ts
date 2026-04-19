@@ -1,5 +1,6 @@
 import type { EbookProject } from '../context/EbookContext';
 import { convertDocumentToHtml, isValidProjectJson, extractFileTitle } from '../services/documentConverter';
+import { resolveOpenRouterApiKey } from '../config/env';
 
 /**
  * Exporta um projeto como arquivo JSON
@@ -32,7 +33,7 @@ export const exportProjectsToFile = (projects: EbookProject[]): void => {
 
 /**
  * Importa um projeto a partir de um arquivo (JSON, TXT, MD, PDF)
- * Se for JSON válido, carrega direto. Se não, tenta conversão via IA se apiKey fornecida.
+ * Se for JSON válido, carrega direto. Se não, tenta conversão via IA (VITE_OPENROUTER_API_KEY ou chave manual).
  */
 export const importProjectFromFile = async (
   file: File,
@@ -61,16 +62,17 @@ export const importProjectFromFile = async (
     }
   }
 
-  // Não é JSON válido. Tentar conversão via IA se apiKey fornecida
-  if (!apiKey) {
+  // Não é JSON válido. Tentar conversão via IA (VITE_OPENROUTER_API_KEY ou chave manual)
+  const openRouterKey = resolveOpenRouterApiKey(apiKey);
+  if (!openRouterKey) {
     throw new Error(
-      'Arquivo não é JSON válido. Configure a chave OpenRouter nas configurações para converter automaticamente Markdown, TXT ou PDF.'
+      'Arquivo não é JSON válido. Defina VITE_OPENROUTER_API_KEY no .env ou configure a chave OpenRouter nas configurações para converter automaticamente Markdown, TXT ou PDF.'
     );
   }
 
   try {
     // Converter usando IA
-    const htmlContent = await convertDocumentToHtml(file, apiKey, onProgress);
+    const htmlContent = await convertDocumentToHtml(file, openRouterKey, onProgress);
 
     if (htmlContent === 'JSON_VALID') {
       // Nunca vai chegar aqui porque já validamos JSON acima

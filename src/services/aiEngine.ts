@@ -12,6 +12,7 @@ import {
 } from './openrouter';
 import { callOllama, OLLAMA_MODELS } from './ollama';
 import type { Message } from './openrouter';
+import { resolveOpenRouterApiKey } from '../config/env';
 
 export type EngineType = 'openrouter' | 'ollama';
 
@@ -62,13 +63,13 @@ export async function callAI(
     }, signal);
   }
 
-  // engine === 'openrouter'
-  if (!config.apiKey) {
+  // engine === 'openrouter' (VITE_OPENROUTER_API_KEY ou chave manual)
+  if (!resolveOpenRouterApiKey(config.apiKey)) {
     throw new Error('Chave de API do OpenRouter não configurada.');
   }
 
   return callOpenRouter(messages, {
-    apiKey: config.apiKey,
+    apiKey: config.apiKey ?? '',
     model: config.model,
     timeout: config.timeout,
     maxTokens: config.maxTokens,

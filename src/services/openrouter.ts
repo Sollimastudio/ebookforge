@@ -1,3 +1,5 @@
+import { resolveOpenRouterApiKey } from '../config/env';
+
 export interface Message {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -40,7 +42,9 @@ export async function callOpenRouter(
 ): Promise<string> {
   const isLocal = config.model?.startsWith(LOCAL_MODEL_PREFIX);
 
-  if (!isLocal && !config.apiKey) {
+  const resolvedKey = resolveOpenRouterApiKey(config.apiKey);
+
+  if (!isLocal && !resolvedKey) {
     throw new Error('Chave de API do OpenRouter não configurada.');
   }
 
@@ -55,7 +59,7 @@ export async function callOpenRouter(
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   const apiBase = isLocal ? LOCAL_API_BASE : 'https://openrouter.ai/api/v1';
-  const apiKey = isLocal ? LOCAL_API_KEY : config.apiKey;
+  const apiKey = isLocal ? LOCAL_API_KEY : resolvedKey;
   const modelId = isLocal ? config.model!.replace(LOCAL_MODEL_PREFIX, 'ollama/') : (config.model || DEFAULT_MODEL);
 
   try {

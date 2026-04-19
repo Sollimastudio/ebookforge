@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Key, Palette, Sun, Moon, Sparkles, Sunset, Check, AlertCircle, Server, Cloud } from 'lucide-react';
 import { useEbook, type Theme } from '../../context/EbookContext';
+import { getOpenRouterApiKeyFromEnv } from '../../config/env';
 
 const THEMES: { id: Theme; label: string; icon: React.ReactNode; preview: string; description: string }[] = [
   {
@@ -34,7 +35,8 @@ const THEMES: { id: Theme; label: string; icon: React.ReactNode; preview: string
 ];
 
 export const SettingsPanel: React.FC = () => {
-  const { apiKey, setApiKey, activeTheme, setActiveTheme, selectedEngine, setSelectedEngine } = useEbook();
+  const { apiKey, openRouterApiKeyEffective, setApiKey, activeTheme, setActiveTheme, selectedEngine, setSelectedEngine } = useEbook();
+  const fromEnv = Boolean(getOpenRouterApiKeyFromEnv());
   const [showApiInput, setShowApiInput] = useState(false);
   const [tempApiKey, setTempApiKey] = useState(apiKey);
   const [apiKeySaved, setApiKeySaved] = useState(false);
@@ -123,11 +125,16 @@ export const SettingsPanel: React.FC = () => {
             <h3>Chave OpenRouter</h3>
           </div>
           <p className="section-description">
-            Configure sua chave de API para usar a IA na geração de ebooks. A chave fica salva localmente no seu navegador.
+            A chave oficial pode vir de <code>VITE_OPENROUTER_API_KEY</code> no ficheiro <code>.env</code> (reinicie o Vite após alterar). Caso contrário, use a chave abaixo — fica salva localmente no navegador.
           </p>
+          {fromEnv && (
+            <p className="api-hint" style={{ marginTop: 8 }}>
+              Chave OpenRouter carregada do ambiente (<code>.env</code>).
+            </p>
+          )}
 
           <div className="api-status">
-            {apiKey ? (
+            {openRouterApiKeyEffective ? (
               <div className="status-badge success">
                 <Check size={16} />
                 <span>API Key Configurada</span>
@@ -142,7 +149,7 @@ export const SettingsPanel: React.FC = () => {
 
           {!showApiInput ? (
             <button className="btn-settings-action" onClick={() => setShowApiInput(true)}>
-              {apiKey ? 'Alterar Chave' : 'Configurar Chave'}
+              {apiKey || fromEnv ? 'Alterar Chave' : 'Configurar Chave'}
             </button>
           ) : (
             <div className="api-input-section">

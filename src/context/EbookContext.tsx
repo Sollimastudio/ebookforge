@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { extractTextFromPdf } from '../utils/pdfProcessor';
 import { callAI, DEFAULT_MODEL, ALL_MODELS as AVAILABLE_MODELS, type EngineType } from '../services/aiEngine';
 import { GhostwriterPrompts, type Blueprint, type ContentFormat } from '../services/prompts';
 import { generateImage, buildCoverPrompt } from '../services/imageGen';
+import { resolveOpenRouterApiKey } from '../config/env';
 
 export type Theme = 'obsidian-noir' | 'arctic-white' | 'royal-purple' | 'sunset-warm' | 'forest-green' | 'ocean-blue' | 'rose-pink' | 'midnight-blue' | 'crimson-red' | 'amber-gold' | 'slate-gray';
 
@@ -30,6 +31,8 @@ interface EbookContextType {
   activeProject: EbookProject | null;
   activeTheme: Theme;
   apiKey: string;
+  /** Chave usada nas chamadas OpenRouter: VITE_OPENROUTER_API_KEY (se definida) ou chave manual. */
+  openRouterApiKeyEffective: string;
   openaiKey: string;
   replicateKey: string;
   anthropicKey: string;
@@ -157,6 +160,8 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     return localStorage.getItem(API_KEY_STORAGE) || '';
   });
 
+  const openRouterApiKeyEffective = useMemo(() => resolveOpenRouterApiKey(apiKey), [apiKey]);
+
   const [selectedModel, setSelectedModelState] = useState<string>(() => {
     const saved = localStorage.getItem(MODEL_KEY) || '';
     const validIds = AVAILABLE_MODELS.map(m => m.id);
@@ -271,8 +276,8 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
    * Pipeline completo: Blueprint → Introdução → Capítulos (paralelos em lotes) → Conclusão
    */
   const runForge = useCallback(async (fullText: string, targetTheme?: Theme) => {
-    if (selectedEngine === 'openrouter' && !apiKey) {
-      setForgeError('Configure sua chave do OpenRouter primeiro (ícone de chave na barra lateral) ou escolha o motor Ollama Local.');
+    if (selectedEngine === 'openrouter' && !openRouterApiKeyEffective) {
+      setForgeError('Configure VITE_OPENROUTER_API_KEY no .env ou a chave do OpenRouter nas configurações (ícone de chave na barra lateral), ou escolha o motor Ollama Local.');
       setForgeStatus('error');
       return;
     }
@@ -525,11 +530,11 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setAbortController(null);
     }
-  }, [apiKey, selectedModel, selectedEngine, setActiveTheme, generateImages, imageProvider, imageModel, openaiKey, replicateKey]);
+  }, [openRouterApiKeyEffective, apiKey, selectedModel, selectedEngine, setActiveTheme, generateImages, imageProvider, imageModel, openaiKey, replicateKey]);
 
   const forgeEbook = useCallback(async (file: File, theme?: Theme) => {
-    if (selectedEngine === 'openrouter' && !apiKey) {
-      setForgeError('Configure sua chave do OpenRouter primeiro ou escolha o motor Ollama Local.');
+    if (selectedEngine === 'openrouter' && !openRouterApiKeyEffective) {
+      setForgeError('Configure VITE_OPENROUTER_API_KEY no .env ou a chave do OpenRouter nas configurações, ou escolha o motor Ollama Local.');
       setForgeStatus('error');
       return;
     }
@@ -548,11 +553,11 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       setForgeStatus('error');
       setForgeError(err.message || 'Erro ao processar o PDF.');
     }
-  }, [apiKey, selectedEngine, runForge]);
+  }, [openRouterApiKeyEffective, selectedEngine, runForge]);
 
   const forgeEbookFromText = useCallback(async (text: string, theme?: Theme) => {
-    if (selectedEngine === 'openrouter' && !apiKey) {
-      setForgeError('Configure sua chave do OpenRouter primeiro ou escolha o motor Ollama Local.');
+    if (selectedEngine === 'openrouter' && !openRouterApiKeyEffective) {
+      setForgeError('Configure VITE_OPENROUTER_API_KEY no .env ou a chave do OpenRouter nas configurações, ou escolha o motor Ollama Local.');
       setForgeStatus('error');
       return;
     }
@@ -567,7 +572,7 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
     setForgeError(null);
     setForgeProgressDetail({ phase: 'Preparando manuscrito...', current: 0, total: 1, label: `${clean.length.toLocaleString()} caracteres` });
     await runForge(clean, theme);
-  }, [apiKey, selectedEngine, runForge]);
+  }, [openRouterApiKeyEffective, selectedEngine, runForge]);
 
   const importSingleProject = useCallback((project: EbookProject) => {
     setProjects(prev => [...prev, project]);
@@ -588,6 +593,7 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
       activeProject,
       activeTheme,
       apiKey,
+      openRouterApiKeyEffective,
       openaiKey,
       replicateKey,
       anthropicKey,

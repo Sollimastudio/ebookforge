@@ -1,5 +1,6 @@
 import { extractTextFromPdf } from '../utils/pdfProcessor';
 import { callOpenRouter, DEFAULT_MODEL, type Message } from './openrouter';
+import { resolveOpenRouterApiKey } from '../config/env';
 
 /**
  * Converte um arquivo de qualquer formato (TXT, MD, PDF) para HTML estruturado
@@ -12,6 +13,11 @@ export async function convertDocumentToHtml(
   onProgress?: (message: string) => void
 ): Promise<string> {
   try {
+    const effectiveKey = resolveOpenRouterApiKey(apiKey);
+    if (!effectiveKey) {
+      throw new Error('Chave OpenRouter não configurada (VITE_OPENROUTER_API_KEY ou chave nas configurações).');
+    }
+
     onProgress?.('📂 Lendo arquivo...');
     
     let rawText = '';
@@ -92,7 +98,7 @@ Responda com HTML válido pronto para ser usado em um editor WYSIWYG.`
     ];
 
     const htmlContent = await callOpenRouter(messages, {
-      apiKey,
+      apiKey: effectiveKey,
       model: DEFAULT_MODEL,
       timeout: 180000,
       maxTokens: 16384,

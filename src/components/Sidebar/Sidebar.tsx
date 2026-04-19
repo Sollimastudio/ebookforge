@@ -35,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
     projects, activeProjectId, activeProject,
     createProject, deleteProject, renameProject,
     activeTheme, setActiveTheme,
-    apiKey, setApiKey, forgeStatus, cancelForge,
+    apiKey, openRouterApiKeyEffective, setApiKey, forgeStatus, cancelForge,
     importSingleProject, importMultipleProjects,
     selectedEngine, setSelectedEngine,
     openaiKey, setOpenaiKey,
@@ -308,10 +308,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
 
       <div className="api-key-section">
         <button
-          className={`api-toggle ${apiKey ? 'has-key' : 'needs-key'}`}
+          className={`api-toggle ${openRouterApiKeyEffective ? 'has-key' : 'needs-key'}`}
           onClick={() => setShowApiInput(!showApiInput)}
         >
-          {apiKey ? (
+          {openRouterApiKeyEffective ? (
             <><Check size={14} /> ✅ API Configurada</>
           ) : (
             <><AlertCircle size={14} className="animate-pulse" /> 🔑 Configurar IA (OpenRouter)</>
@@ -459,7 +459,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
         <button 
           className="btn-export" 
           onClick={handleGoForge}
-          disabled={!apiKey || forgeStatus !== 'idle'}
+          disabled={forgeStatus !== 'idle' || (selectedEngine === 'openrouter' && !openRouterApiKeyEffective)}
           title="🤖 Usar IA para melhorar o texto atual"
         >
           <Sparkles size={14} />
