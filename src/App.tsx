@@ -173,7 +173,7 @@ ${activeProject.content}
                 <h1 className="project-title-display">{activeProject.title}</h1>
                 <span className="autosave-badge">💾 Auto-salvo</span>
               </div>
-              <EbookEditor />
+              <EbookEditor onGoToForge={() => navigateTo('forge')} />
             </>
           ) : (
             <ForgeDashboard />

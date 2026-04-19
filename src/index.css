@@ -666,6 +666,48 @@ body {
   color: var(--accent);
 }
 
+.btn-export-multiline {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 8px;
+}
+
+.btn-export-multiline .btn-export-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.btn-export-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.btn-export-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: inherit;
+}
+
+.btn-export-sub {
+  font-size: 0.62rem;
+  font-weight: 500;
+  opacity: 0.82;
+  line-height: 1.2;
+}
+
+.sidebar-io-explainer {
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  padding: 0 1rem 8px;
+  margin: 0;
+}
+
 /* =============================================
    PROJECT HEADER
    ============================================= */
@@ -712,6 +754,48 @@ body {
 /* =============================================
    TOOLBAR
    ============================================= */
+/* Faixa didática: editor ≠ criar ebook com IA */
+.editor-ia-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 12px 16px;
+  margin: 0 1rem 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.08));
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.editor-ia-banner-text {
+  flex: 1;
+  min-width: 200px;
+}
+
+.editor-ia-banner-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.55rem 1rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(88, 166, 255, 0.25);
+}
+
+.editor-ia-banner-btn:hover {
+  filter: brightness(1.06);
+}
+
 .editor-wrapper {
   display: flex;
   flex-direction: column;
@@ -1209,6 +1293,50 @@ body {
   line-height: 1.6;
 }
 
+.forge-flow-hint {
+  max-width: 640px;
+  margin: 1.25rem auto 0;
+  padding: 0.85rem 1.1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-2);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.forge-section-lead {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem;
+  line-height: 1.45;
+}
+
+.paste-cta-block {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.paste-cta-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.drop-zone-lead {
+  margin: 0 0 0.25rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  max-width: 22rem;
+}
+
+.forge-footer-cta {
+  margin-top: 0.5rem;
+}
+
 .drop-zone {
   width: 100%;
   max-width: 700px;
@@ -1443,7 +1571,7 @@ body {
 
 .btn-sidebar-nav {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   padding: 0.6rem 0.8rem;
   background: rgba(255, 255, 255, 0.04);
@@ -1454,6 +1582,11 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.btn-sidebar-nav > svg:first-child {
+  flex-shrink: 0;
+  margin-top: 3px;
 }
 
 .btn-sidebar-nav:hover {
@@ -2285,8 +2418,22 @@ body {
   margin-top: 0.25rem;
 }
 
-.btn-sidebar-nav span {
-  font-size: 0.85rem;
+.btn-sidebar-nav-title {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.btn-sidebar-nav-desc {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 3px;
+  line-height: 1.25;
+  text-align: left;
 }
 
 /* =============================================

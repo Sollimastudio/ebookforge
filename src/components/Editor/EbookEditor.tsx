@@ -15,13 +15,18 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Link from '@tiptap/extension-link';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
-import { BookMarked } from 'lucide-react';
+import { BookMarked, Sparkles } from 'lucide-react';
 import { Toolbar } from './Toolbar';
 import { StatisticsPanel } from '../Forge/StatisticsPanel';
 import { TableOfContentsPanel } from '../Forge/TableOfContentsPanel';
 import { useEbook } from '../../context/EbookContext';
 
-export const EbookEditor = () => {
+interface EbookEditorProps {
+  /** Atalho para a página onde a IA transforma manuscrito inteiro em ebook. */
+  onGoToForge?: () => void;
+}
+
+export const EbookEditor = ({ onGoToForge }: EbookEditorProps) => {
   const { activeProject, updateProjectContent } = useEbook();
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,7 +44,9 @@ export const EbookEditor = () => {
       TableHeader,
       TableCell,
       Typography,
-      Placeholder.configure({ placeholder: 'Comece a escrever seu Ebook premium aqui...' }),
+      Placeholder.configure({
+        placeholder: 'Escreva ou edite aqui. Manuscrito inteiro para a IA → barra lateral «Criar com IA».',
+      }),
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Color,
@@ -155,6 +162,19 @@ export const EbookEditor = () => {
 
   return (
     <div className="editor-wrapper">
+      {onGoToForge && (
+        <div className="editor-ia-banner" role="region" aria-label="Atalho para criar ebook com IA">
+          <div className="editor-ia-banner-text">
+            <strong>Editor manual.</strong>{' '}
+            Aqui você edita o conteúdo já criado. Para colar o <strong>manuscrito inteiro</strong> e a{' '}
+            <strong>IA gerar capítulos e layout</strong>, use a área <strong>Criar com IA</strong> na barra lateral.
+          </div>
+          <button type="button" className="editor-ia-banner-btn" onClick={onGoToForge}>
+            <Sparkles size={16} aria-hidden />
+            Ir para Criar com IA
+          </button>
+        </div>
+      )}
       <div className="toolbar">
         <Toolbar editor={editor} />
         <div className="toolbar-divider" />

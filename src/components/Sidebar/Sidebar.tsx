@@ -179,25 +179,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
         <button 
           className={`btn-sidebar-nav ${currentView === 'forge' ? 'active' : ''}`}
           onClick={handleGoForge}
-          title="Criar ebook com IA"
+          title="Colar texto ou PDF do manuscrito; a IA gera o ebook completo"
         >
           <LayoutDashboard size={14} />
-          <span>🏠 Início (Anexar Manuscritos)</span>
+          <span className="btn-sidebar-nav-title">Criar com IA</span>
+          <span className="btn-sidebar-nav-desc">Manuscrito (texto ou PDF) → ebook novo</span>
         </button>
         <button 
           className="btn-sidebar-nav" 
           onClick={handleNew}
-          title="✨ Criar um novo ebook vazio para editar"
+          title="Página em branco para escrever ou colar à mão, sem gerar capítulos por IA"
         >
           <Plus size={14} />
-          <span>📝 Novo Ebook</span>
+          <span className="btn-sidebar-nav-title">Projeto vazio</span>
+          <span className="btn-sidebar-nav-desc">Editor manual — não é o passo da IA</span>
         </button>
       </div>
 
       {/* Projects Section */}
       <div className="sidebar-section-label">
         📚 Meus Ebooks Salvos ({projects.length})
-        <div className="section-hint">Clique para editar • Arraste PDFs no "Início" para criar novos</div>
+        <div className="section-hint">Clique para editar • PDF ou texto longo para IA: use «Criar com IA»</div>
       </div>
 
       <div className="projects-list">
@@ -206,7 +208,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
             <div className="empty-icon">📚</div>
             <div className="empty-title">Nenhum ebook ainda</div>
             <div className="empty-desc">
-              Clique em "🏠 Início" e arraste um PDF para criar seu primeiro ebook com IA!
+              Clique em «Criar com IA» e envie o PDF ou cole o texto do manuscrito.
             </div>
           </div>
         ) : (
@@ -493,23 +495,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
 
       {/* Import & Sync */}
       <div className="sidebar-divider" />
-      <div className="sidebar-section-label"><Upload size={12} /> 📥 Importar & Backup</div>
+      <div className="sidebar-section-label"><Upload size={12} /> Ficheiros e backups</div>
+      <p className="sidebar-io-explainer">
+        Isto <strong>não</strong> substitui «Criar com IA»: serve para <strong>abrir um projeto guardado</strong>, converter TXT/MD/PDF em projeto, ou <strong>restaurar backup</strong>.
+      </p>
       <div className="export-btns">
         <button 
-          className="btn-export" 
+          className="btn-export btn-export-multiline"
           onClick={() => importFileRef.current?.click()}
-          title="📂 Carregar um ebook salvo (.ebookforge)"
+          title="Projeto .ebookforge ou JSON; ou manuscrito TXT, MD, PDF (conversão com IA se configurada)"
         >
-          <Upload size={14} />
-          <span>📂 Importar Ebook</span>
+          <Upload size={14} className="btn-export-icon" />
+          <span className="btn-export-lines">
+            <span className="btn-export-title">Abrir ou converter ficheiro</span>
+            <span className="btn-export-sub">.ebookforge, .json, .txt, .md, .pdf</span>
+          </span>
         </button>
         <button 
-          className="btn-export" 
+          className="btn-export btn-export-multiline"
           onClick={() => importBackupFileRef.current?.click()}
-          title="💾 Restaurar backup com múltiplos ebooks"
+          title="Ficheiro de backup com vários ebooks (JSON de exportação completa)"
         >
-          <Upload size={14} />
-          <span>💾 Importar Backup</span>
+          <Upload size={14} className="btn-export-icon" />
+          <span className="btn-export-lines">
+            <span className="btn-export-title">Restaurar backup completo</span>
+            <span className="btn-export-sub">vários ebooks de uma vez</span>
+          </span>
         </button>
         <button 
           className="btn-export" 

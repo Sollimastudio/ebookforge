@@ -117,6 +117,10 @@ export const ForgeDashboard = () => {
         <p className="forge-subtitle">
           Zero edição manual. A IA lê tudo, estrutura, reescreve e entrega com design premium.
         </p>
+        <p className="forge-flow-hint">
+          <strong>Passo 1:</strong> escolha modelo e tema abaixo. <strong>Passo 2:</strong> cole o texto <em>ou</em> envie o PDF.
+          <strong> Passo 3:</strong> use o botão verde <strong>«Gerar ebook com IA»</strong> (logo abaixo do texto — pode precisar de descer a página).
+        </p>
       </div>
 
       {/* ── AVISO DE API KEY (só se motor = openrouter) ───────────────────── */}
@@ -214,18 +218,26 @@ export const ForgeDashboard = () => {
 
       {/* ── SELEÇÃO DE MODO DE INPUT ─────────────────────────────────────── */}
       <div className="forge-section">
+        <label className="forge-label">
+          <FileText size={14} /> O seu manuscrito
+        </label>
+        <p className="forge-section-lead">
+          Isto <strong>não</strong> é anexo ao projeto atual: cada geração cria um <strong>ebook novo</strong> na lista à esquerda.
+        </p>
         <div className="input-mode-tabs">
           <button
             className={`input-tab ${inputMode === 'paste' ? 'active' : ''}`}
             onClick={() => setInputMode('paste')}
+            type="button"
           >
-            <FileText size={14} /> Colar Texto
+            <FileText size={14} /> Colar texto do manuscrito
           </button>
           <button
             className={`input-tab ${inputMode === 'pdf' ? 'active' : ''}`}
             onClick={() => setInputMode('pdf')}
+            type="button"
           >
-            <Upload size={14} /> Enviar PDF
+            <Upload size={14} /> Enviar PDF do manuscrito
           </button>
         </div>
 
@@ -234,7 +246,7 @@ export const ForgeDashboard = () => {
           <div className="paste-area">
             <textarea
               className="manuscript-textarea"
-              placeholder="Cole aqui o texto completo do seu manuscrito...&#10;&#10;Pode ser o livro inteiro, notas brutas, transcrições — quanto mais conteúdo, melhor o resultado. A IA vai ler tudo, estruturar e reescrever com qualidade editorial."
+              placeholder="Cole aqui o texto completo do manuscrito (livro, notas, transcrição). Depois prima o botão verde «Gerar ebook com IA» logo abaixo."
               value={pastedText}
               onChange={e => setPastedText(e.target.value)}
               rows={14}
@@ -249,6 +261,24 @@ export const ForgeDashboard = () => {
                 {wordCount > 0 && wordCount < 500 && <span className="paste-warn">⚠ Cole mais conteúdo para melhor resultado</span>}
               </div>
             )}
+            <div className="paste-cta-block">
+              <button
+                type="button"
+                className="btn-forge-main"
+                onClick={handleForge}
+                disabled={openRouterBlocked || pastedText.trim().length < 50}
+              >
+                <Sparkles size={18} />
+                {openRouterBlocked
+                  ? 'Configure a chave OpenRouter primeiro'
+                  : pastedText.trim().length < 50
+                    ? `Cole pelo menos 50 caracteres (faltam ${Math.max(0, 50 - pastedText.trim().length)})`
+                    : 'Gerar ebook com IA — passo seguinte'}
+              </button>
+              <p className="paste-cta-note">
+                O mesmo botão repete-se no fim da página. Use qualquer um.
+              </p>
+            </div>
           </div>
         )}
 
@@ -261,7 +291,8 @@ export const ForgeDashboard = () => {
             onDrop={onDrop}
           >
             <Upload size={28} />
-            <p>{isDragging ? 'Solte o arquivo!' : 'Arraste seu PDF aqui'}</p>
+            <p>{isDragging ? 'Solte o ficheiro!' : 'Arraste o PDF do manuscrito aqui'}</p>
+            <p className="drop-zone-lead">A IA extrai o texto e cria um ebook novo (não é ficheiro anexado ao editor).</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -298,12 +329,17 @@ export const ForgeDashboard = () => {
       {/* ── BOTÃO PRINCIPAL ──────────────────────────────────────────────── */}
       {inputMode === 'paste' && (
         <button
-          className="btn-forge-main"
+          type="button"
+          className="btn-forge-main forge-footer-cta"
           onClick={handleForge}
           disabled={openRouterBlocked || pastedText.trim().length < 50}
         >
           <Sparkles size={18} />
-          {openRouterBlocked ? 'Configure a API Key primeiro' : pastedText.trim().length < 50 ? 'Cole seu manuscrito acima' : 'Forjar Ebook Agora'}
+          {openRouterBlocked
+            ? 'Configure a API Key primeiro'
+            : pastedText.trim().length < 50
+              ? 'Cole o manuscrito acima (mín. 50 caracteres)'
+              : 'Gerar ebook com IA (repetir ação)'}
         </button>
       )}
     </div>
