@@ -81,8 +81,25 @@ export const ForgeDashboard = () => {
   }, [inputMode, pastedText, selectedTheme, forgeEbookFromText]);
 
   const handleFile = useCallback((file: File) => {
-    if (file.type !== 'application/pdf') {
-      alert('Por favor, envie um arquivo PDF.');
+    // Aceita múltiplos formatos: PDF, DOCX, EPUB, RTF, ODT, TXT, MD
+    const acceptedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
+      'application/epub+zip',
+      'application/rtf',
+      'text/plain',
+      'text/markdown',
+      'application/vnd.oasis.opendocument.text' // ODT
+    ];
+    
+    const filename = file.name.toLowerCase();
+    const acceptedExtensions = ['.pdf', '.docx', '.epub', '.rtf', '.txt', '.md', '.markdown', '.odt'];
+    
+    const hasValidType = acceptedTypes.includes(file.type);
+    const hasValidExtension = acceptedExtensions.some(ext => filename.endsWith(ext));
+    
+    if (!hasValidType && !hasValidExtension) {
+      alert('Por favor, envie um arquivo em um dos formatos suportados: PDF, DOCX, EPUB, RTF, ODT, TXT ou MD.');
       return;
     }
     forgeEbook(file, selectedTheme);
@@ -327,12 +344,12 @@ export const ForgeDashboard = () => {
             onDrop={onDrop}
           >
             <Upload size={28} />
-            <p>{isDragging ? 'Solte o ficheiro!' : 'Arraste o PDF do manuscrito aqui'}</p>
-            <p className="drop-zone-lead">A IA extrai o texto e cria um ebook novo (não é ficheiro anexado ao editor).</p>
+            <p>{isDragging ? 'Solte o ficheiro!' : 'Arraste o arquivo do manuscrito aqui'}</p>
+            <p className="drop-zone-lead">Formatos suportados: PDF, DOCX, EPUB, RTF, ODT, TXT, MD. A IA extrai o texto e cria um ebook novo (não é ficheiro anexado ao editor).</p>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf"
+              accept=".pdf,.docx,.epub,.rtf,.odt,.txt,.md,.markdown"
               className="hidden-input"
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
               disabled={openRouterBlocked}
@@ -342,7 +359,7 @@ export const ForgeDashboard = () => {
               onClick={() => fileInputRef.current?.click()}
               disabled={openRouterBlocked}
             >
-              Selecionar PDF
+              Selecionar Arquivo (PDF, DOCX, EPUB, RTF, ODT, TXT, MD)
             </button>
           </div>
         )}

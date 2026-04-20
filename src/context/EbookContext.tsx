@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { extractTextFromPdf } from '../utils/pdfProcessor';
-import { callAI, DEFAULT_MODEL, ALL_MODELS as AVAILABLE_MODELS, type EngineType } from '../services/aiEngine';
+import { callAI, DEFAULT_MODEL, type EngineType } from '../services/aiEngine';
 import { GhostwriterPrompts, type Blueprint, type ContentFormat } from '../services/prompts';
 import { generateImage, buildCoverPrompt } from '../services/imageGen';
 import { resolveOpenRouterApiKey } from '../config/env';
@@ -165,8 +165,9 @@ export const EbookProvider = ({ children }: { children: ReactNode }) => {
 
   const [selectedModel, setSelectedModelState] = useState<string>(() => {
     const saved = localStorage.getItem(MODEL_KEY) || '';
-    const validIds = AVAILABLE_MODELS.map(m => m.id);
-    return validIds.includes(saved as any) ? saved : DEFAULT_MODEL;
+    // Permite modelos customizados (ex: openai/gpt-oss-120b:free)
+    // Fallback para DEFAULT_MODEL apenas se localStorage estiver vazio
+    return saved || DEFAULT_MODEL;
   });
 
   const [selectedEngine, setSelectedEngineState] = useState<EngineType>(() => {

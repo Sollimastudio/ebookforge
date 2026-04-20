@@ -44,8 +44,17 @@ export const GhostwriterPrompts = {
    * FASE 1 — Análise do manuscrito + detecção de formato + blueprint
    */
   CREATE_BLUEPRINT: (text: string) => `
-Você é um Editor Sênior especializado em transformar manuscritos em ebooks de alto impacto.
-Analise o manuscrito abaixo com atenção total. Sua primeira tarefa é IDENTIFICAR O FORMATO DO CONTEÚDO.
+Você é um Editor Sênior de Publicações Premium especializado em transformar manuscritos em ebooks de qualidade best-seller.
+Analise o manuscrito abaixo com atenção total. Sua primeira tarefa é IDENTIFICAR O FORMATO DO CONTEÚDO e preparar uma estrutura de QUALIDADE PREMIUM.
+
+CRITÉRIOS DE QUALIDADE PREMIUM OBRIGATÓRIA:
+- Conteúdo completo, sem resumos ou abreviações
+- Estrutura sofisticada e profissional
+- Sem erros gramaticais ou ortográficos
+- Diagramação clara e elegante
+- Títulos e subtítulos bem marcados
+- Estética de leitura super agradável
+- Potencial de best-seller
 
 FORMATOS POSSÍVEIS:
 - "daily_entries": O conteúdo é organizado por dias (Dia 1, Dia 2, Segunda-feira...), diário, devocional, desafio de X dias
@@ -172,7 +181,16 @@ REGRAS:
     context: string,
     bookTitle: string
   ) => `
-Você é um Ghostwriter de elite. Escreva o capítulo "${entry.title}" do ebook "${bookTitle}".
+Você é um Ghostwriter de elite especializado em publicações de qualidade best-seller. Escreva o capítulo "${entry.title}" do ebook "${bookTitle}" com QUALIDADE PREMIUM.
+
+CRITÉRIOS DE QUALIDADE PREMIUM OBRIGATÓRIA:
+- Conteúdo COMPLETO e DETALHADO (mínimo 800 palavras)
+- Sem resumos ou abreviações
+- Estrutura sofisticada com múltiplos níveis de subtítulos
+- Sem erros gramaticais ou ortográficos
+- Diagramação clara e elegante
+- Voz do autor preservada e amplificada
+- Potencial de best-seller
 
 BRIEFING:
 - Objetivo: ${entry.summary}
@@ -190,10 +208,10 @@ ESTRUTURA HTML OBRIGATÓRIA (use exatamente estas classes CSS):
 
 <h2>${entry.title}</h2>
 
-<p>Parágrafo de abertura forte que captura imediatamente a atenção do leitor.</p>
+<p>Parágrafo de abertura forte que captura imediatamente a atenção do leitor com profundidade e elegância.</p>
 
 <h3>Subtítulo Interno</h3>
-<p>Desenvolvimento com substância — mínimo 500 palavras totais. Use exemplos concretos do manuscrito.</p>
+<p>Desenvolvimento com substância — mínimo 800 palavras totais. Use exemplos concretos, estudos de caso e insights do manuscrito. Mantenha a voz do autor e adicione sofisticação profissional.</p>
 
 <div class="premium-callout callout-insight">
   <strong>💡 Insight-Chave</strong>
