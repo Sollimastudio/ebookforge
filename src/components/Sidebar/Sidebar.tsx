@@ -5,8 +5,8 @@ import { exportProjectToFile, exportProjectsToFile, importProjectFromFile, impor
 import {
   BookOpen, Plus, Trash2, Pencil, Check, X,
   Palette, Sun, Moon, Sparkles, Sunset,
-  Download, FileText, ChevronRight, Key, LayoutDashboard, AlertCircle, Upload,
-  TreePine, Waves, Heart, Star, Flame, Crown, Cloud, Megaphone
+  Download, ChevronRight, Key, LayoutDashboard, Upload,
+  TreePine, Waves, Heart, Star, Flame, Crown, Cloud, Megaphone, Loader2
 } from 'lucide-react';
 
 const THEMES: { id: Theme; label: string; icon: React.ReactNode; preview: string }[] = [
@@ -30,19 +30,17 @@ interface SidebarProps {
   onNavigate: (view: AppView, projectId?: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, currentView, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
   const {
     projects, activeProjectId, activeProject,
     createProject, deleteProject, renameProject,
     activeTheme, setActiveTheme,
-    apiKey, openRouterApiKeyEffective, setApiKey, forgeStatus, cancelForge,
+    apiKey, openRouterApiKeyEffective, setApiKey, cancelForge,
     importSingleProject, importMultipleProjects,
     selectedEngine, setSelectedEngine,
     openaiKey, setOpenaiKey,
     replicateKey, setReplicateKey,
     anthropicKey, setAnthropicKey,
-    imageProvider, setImageProvider,
-    setImageModel,
     generateImages, setGenerateImages,
   } = useEbook();
   const [showPremiumApis, setShowPremiumApis] = useState(false);
@@ -88,9 +86,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
       
       setTimeout(() => {
         const format = file.name.split('.').pop()?.toUpperCase() || 'arquivo';
-        const conversionNote = file.name.endsWith('.json') || file.name.endsWith('.ebookforge') ? '' : '\n🤖 Convertido com IA';
+        const isNative = file.name.endsWith('.json') || file.name.endsWith('.ebookforge');
+        const conversionNote = isNative ? '' : '\n🤖 Convertido com IA (Qualidade Premium)';
         alert(`✅ Projeto "${project.title}" importado com sucesso!\n(Formato: ${format})${conversionNote}`);
         setIsImporting(false);
+        onNavigate('editor', project.id);
       }, 500);
     } catch (err) {
       setIsImporting(false);
@@ -99,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
       // Se erro mencionado chave API, oferecer setting
       if (errorMsg.includes('OpenRouter')) {
         const shouldConfigure = confirm(
-          `❌ ${errorMsg}\n\nDeseja configurar a chave OpenRouter agora para suportar conversão automática de TXT, MD e PDF?`
+          `❌ ${errorMsg}\n\nDeseja configurar a chave OpenRouter agora para suportar conversão automática de PDF, DOCX, EPUB, TXT e MD?`
         );
         if (shouldConfigure) {
           setShowApiInput(true);
@@ -183,11 +183,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
         <button 
           className={`btn-sidebar-nav ${currentView === 'forge' ? 'active' : ''}`}
           onClick={handleGoForge}
-          title="Colar texto ou PDF do manuscrito; a IA gera o ebook completo"
+          title="Colar texto ou arquivo do manuscrito; a IA gera o ebook completo"
         >
           <LayoutDashboard size={14} />
           <span className="btn-sidebar-nav-title">Criar com IA</span>
-          <span className="btn-sidebar-nav-desc">Manuscrito (texto ou PDF) → ebook novo</span>
+          <span className="btn-sidebar-nav-desc">Manuscrito (PDF, DOCX, EPUB...) → ebook novo</span>
         </button>
         <button
           className="btn-sidebar-nav"
@@ -212,7 +212,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
       {/* Projects Section */}
       <div className="sidebar-section-label">
         📚 Meus Ebooks Salvos ({projects.length})
-        <div className="section-hint">Clique para editar • PDF ou texto longo para IA: use «Criar com IA»</div>
+        <div className="section-hint">Clique para editar • Arquivos para IA: use «Criar com IA»</div>
       </div>
 
       <div className="projects-list">
@@ -221,7 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
             <div className="empty-icon">📚</div>
             <div className="empty-title">Nenhum ebook ainda</div>
             <div className="empty-desc">
-              Clique em «Criar com IA» e envie o PDF ou cole o texto do manuscrito.
+              Clique em «Criar com IA» e envie o arquivo ou cole o texto do manuscrito.
             </div>
           </div>
         ) : (
@@ -259,11 +259,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
                       <Pencil size={12} />
                     </button>
                     <button
-                      className="icon-btn danger"
+                      className="icon-btn red"
                       title="Excluir"
-                      onClick={() => {
-                        if (window.confirm(`Excluir "${p.title}"?`)) deleteProject(p.id);
-                      }}
+                      onClick={() => confirm(`Excluir "${p.title}"?`) && deleteProject(p.id)}
                     >
                       <Trash2 size={12} />
                     </button>
@@ -275,379 +273,151 @@ export const Sidebar: React.FC<SidebarProps> = ({ onExportPDF, onExportHTML, cur
         )}
       </div>
 
-      {/* Settings Section */}
-      <div className="sidebar-divider" />
+      {/* Bottom Actions */}
+      <div className="sidebar-footer">
+        <div className="sidebar-footer-grid">
+          <button className="footer-btn" onClick={() => importFileRef.current?.click()} title="Importar .ebookforge ou converter PDF/DOCX/EPUB">
+            <Upload size={14} />
+            <span>Importar</span>
+          </button>
+          <button className="footer-btn" onClick={handleExportCurrent} title="Exportar projeto ativo como .ebookforge">
+            <Download size={14} />
+            <span>Exportar</span>
+          </button>
+          <button className="footer-btn" onClick={() => setShowThemes(!showThemes)}>
+            <Palette size={14} />
+            <span>Temas</span>
+          </button>
+          <button className="footer-btn" onClick={() => setShowApiInput(!showApiInput)}>
+            <Key size={14} />
+            <span>API Key</span>
+          </button>
+        </div>
 
-      <div className="sidebar-section-label">
-        <Key size={12} /> ⚙️ Configurações
-      </div>
+        {/* Hidden Inputs */}
+        <input
+          type="file"
+          ref={importFileRef}
+          className="hidden"
+          accept=".ebookforge,.json,.txt,.md,.markdown,.pdf,.docx,.epub,.rtf,.odt"
+          onChange={handleImportProject}
+        />
+        <input
+          type="file"
+          ref={importBackupFileRef}
+          className="hidden"
+          accept=".json"
+          onChange={handleImportBackup}
+        />
 
-      {/* Engine Selector */}
-      <div style={{ padding: '8px 12px 4px', fontSize: 11, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        Motor de IA
-      </div>
-      <div style={{ display: 'flex', gap: 6, padding: '0 12px 10px' }}>
-        <button
-          onClick={() => setSelectedEngine('ollama')}
-          style={{
-            flex: 1,
-            padding: '8px',
-            fontSize: 12,
-            borderRadius: 6,
-            cursor: 'pointer',
-            border: selectedEngine === 'ollama' ? '2px solid #10b981' : '1px solid #333',
-            background: selectedEngine === 'ollama' ? 'rgba(16,185,129,0.15)' : 'transparent',
-            color: 'inherit',
-          }}
-          title="Ollama local (grátis)"
-        >
-          💻 Ollama<br/><span style={{ fontSize: 10, opacity: 0.7 }}>Grátis</span>
-        </button>
-        <button
-          onClick={() => setSelectedEngine('openrouter')}
-          style={{
-            flex: 1,
-            padding: '8px',
-            fontSize: 12,
-            borderRadius: 6,
-            cursor: 'pointer',
-            border: selectedEngine === 'openrouter' ? '2px solid #6366f1' : '1px solid #333',
-            background: selectedEngine === 'openrouter' ? 'rgba(99,102,241,0.15)' : 'transparent',
-            color: 'inherit',
-          }}
-          title="OpenRouter premium (pago)"
-        >
-          🌐 OpenRouter<br/><span style={{ fontSize: 10, opacity: 0.7 }}>Premium</span>
-        </button>
-      </div>
-
-      <div className="api-key-section">
-        <button
-          className={`api-toggle ${openRouterApiKeyEffective ? 'has-key' : 'needs-key'}`}
-          onClick={() => setShowApiInput(!showApiInput)}
-        >
-          {openRouterApiKeyEffective ? (
-            <><Check size={14} /> ✅ API Configurada</>
-          ) : (
-            <><AlertCircle size={14} className="animate-pulse" /> 🔑 Configurar IA (OpenRouter)</>
-          )}
-        </button>
-        {showApiInput && (
-          <div className="api-input-wrap">
-            <input
-              type="password"
-              placeholder="Cole sua chave OpenRouter aqui..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="api-input"
-            />
-            <p className="api-hint">🔒 A chave fica salva apenas no seu MacBook. <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">Obter chave gratuita →</a></p>
+        {/* Theme Selector Overlay */}
+        {showThemes && (
+          <div className="sidebar-overlay themes-overlay">
+            <div className="overlay-header">
+              <span>Temas do Editor</span>
+              <button onClick={() => setShowThemes(false)}><X size={14} /></button>
+            </div>
+            <div className="themes-grid">
+              {THEMES.map(t => (
+                <button
+                  key={t.id}
+                  className={`theme-btn ${activeTheme === t.id ? 'active' : ''}`}
+                  onClick={() => setActiveTheme(t.id)}
+                  title={t.label}
+                >
+                  <div className="theme-preview" style={{ background: t.preview }}>
+                    {t.icon}
+                  </div>
+                  <span className="theme-label">{t.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
-      </div>
 
-      {/* APIs Premium (imagens + alternativas) */}
-      <div style={{ padding: '8px 12px 4px' }}>
-        <button
-          onClick={() => setShowPremiumApis(!showPremiumApis)}
-          style={{
-            width: '100%',
-            padding: '8px 10px',
-            fontSize: 12,
-            borderRadius: 8,
-            cursor: 'pointer',
-            border: '1px dashed #555',
-            background: 'rgba(139,92,246,0.08)',
-            color: 'inherit',
-            textAlign: 'left',
-          }}
-        >
-          ✨ APIs Premium (imagens, Claude direto…) {showPremiumApis ? '▲' : '▼'}
-        </button>
-      </div>
-      {showPremiumApis && (
-        <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Toggle gerar imagens */}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={generateImages}
-              onChange={(e) => setGenerateImages(e.target.checked)}
-            />
-            <span>🎨 Gerar capa ilustrada por IA</span>
-          </label>
-
-          {/* Provider de imagem */}
-          {generateImages && (
-            <>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>Provedor de imagem:</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  onClick={() => { setImageProvider('openai'); setImageModel('dall-e-3'); }}
-                  style={{
-                    flex: 1, padding: 6, fontSize: 11, borderRadius: 6, cursor: 'pointer',
-                    border: imageProvider === 'openai' ? '2px solid #10a37f' : '1px solid #333',
-                    background: imageProvider === 'openai' ? 'rgba(16,163,127,0.15)' : 'transparent',
-                    color: 'inherit',
-                  }}
-                >DALL-E 3<br/><span style={{ fontSize: 9, opacity: 0.7 }}>~$0.04/img</span></button>
-                <button
-                  onClick={() => { setImageProvider('replicate'); setImageModel('black-forest-labs/flux-schnell'); }}
-                  style={{
-                    flex: 1, padding: 6, fontSize: 11, borderRadius: 6, cursor: 'pointer',
-                    border: imageProvider === 'replicate' ? '2px solid #e11d48' : '1px solid #333',
-                    background: imageProvider === 'replicate' ? 'rgba(225,29,72,0.15)' : 'transparent',
-                    color: 'inherit',
-                  }}
-                >Flux<br/><span style={{ fontSize: 9, opacity: 0.7 }}>~$0.003/img</span></button>
+        {/* API Key Overlay */}
+        {showApiInput && (
+          <div className="sidebar-overlay api-overlay">
+            <div className="overlay-header">
+              <span>Configurações de IA</span>
+              <button onClick={() => setShowApiInput(false)}><X size={14} /></button>
+            </div>
+            <div className="api-form">
+              <div className="api-field">
+                <label>OpenRouter API Key</label>
+                <div className="api-input-wrapper">
+                  <input
+                    type="password"
+                    placeholder="sk-or-v1-..."
+                    value={apiKey}
+                    onChange={e => setApiKey(e.target.value)}
+                  />
+                  {openRouterApiKeyEffective && <Check size={14} className="api-check" />}
+                </div>
+                <p className="api-hint">Usada para conversão de arquivos e Ghostwriting.</p>
               </div>
 
-              {imageProvider === 'openai' && (
-                <input
-                  type="password"
-                  placeholder="Chave OpenAI (sk-...)"
-                  value={openaiKey}
-                  onChange={(e) => setOpenaiKey(e.target.value)}
-                  className="api-input"
-                />
+              <div className="api-field">
+                <label>Motor de IA</label>
+                <select 
+                  value={selectedEngine} 
+                  onChange={(e) => setSelectedEngine(e.target.value as any)}
+                  className="api-select"
+                >
+                  <option value="openrouter">OpenRouter (Nuvem)</option>
+                  <option value="ollama">Ollama (Local)</option>
+                </select>
+              </div>
+
+              <button className="premium-toggle" onClick={() => setShowPremiumApis(!showPremiumApis)}>
+                {showPremiumApis ? 'Ocultar APIs Premium' : 'Mostrar APIs de Imagem/Anthropic'}
+              </button>
+
+              {showPremiumApis && (
+                <div className="premium-apis">
+                  <div className="api-field">
+                    <label>OpenAI Key (DALL-E 3)</label>
+                    <input type="password" value={openaiKey} onChange={e => setOpenaiKey(e.target.value)} placeholder="sk-..." />
+                  </div>
+                  <div className="api-field">
+                    <label>Replicate Key (Flux/SDXL)</label>
+                    <input type="password" value={replicateKey} onChange={e => setReplicateKey(e.target.value)} placeholder="r8_..." />
+                  </div>
+                  <div className="api-field">
+                    <label>Anthropic Key (Claude 3)</label>
+                    <input type="password" value={anthropicKey} onChange={e => setAnthropicKey(e.target.value)} placeholder="sk-ant-..." />
+                  </div>
+                  
+                  <div className="api-field-row">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={generateImages} onChange={e => setGenerateImages(e.target.checked)} />
+                      <span>Gerar capas com IA</span>
+                    </label>
+                  </div>
+                </div>
               )}
-              {imageProvider === 'replicate' && (
-                <input
-                  type="password"
-                  placeholder="Token Replicate (r8_...)"
-                  value={replicateKey}
-                  onChange={(e) => setReplicateKey(e.target.value)}
-                  className="api-input"
-                />
-              )}
-              <p style={{ fontSize: 10, opacity: 0.6, margin: 0 }}>
-                🔒 Chave salva só no teu Mac.{' '}
-                {imageProvider === 'openai' && <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Obter chave →</a>}
-                {imageProvider === 'replicate' && <a href="https://replicate.com/account/api-tokens" target="_blank" rel="noopener">Obter token →</a>}
-              </p>
-            </>
-          )}
 
-          {/* Claude direto (opcional) */}
-          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>Claude direto (opcional):</div>
-          <input
-            type="password"
-            placeholder="Chave Anthropic (sk-ant-...)"
-            value={anthropicKey}
-            onChange={(e) => setAnthropicKey(e.target.value)}
-            className="api-input"
-          />
-        </div>
-      )}
-
-      {/* Themes */}
-      <div className="sidebar-section-label">
-        <Palette size={12} /> Tema
-        <button className="theme-toggle-btn" onClick={() => setShowThemes(!showThemes)}>
-          {showThemes ? 'Fechar' : 'Trocar'}
-        </button>
-      </div>
-
-      {showThemes && (
-        <div className="themes-grid">
-          {THEMES.map(t => (
-            <button
-              key={t.id}
-              className={`theme-btn ${activeTheme === t.id ? 'active' : ''}`}
-              onClick={() => setActiveTheme(t.id)}
-              title={t.label}
-            >
-              <span className="theme-preview" style={{ background: t.preview }} />
-              <span className="theme-icon">{t.icon}</span>
-              <span className="theme-label">{t.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Divider */}
-      <div className="sidebar-divider" />
-
-      {/* Export */}
-      <div className="sidebar-section-label"><Download size={12} /> 📤 Exportar & Compartilhar</div>
-      <div className="export-btns">
-        <button 
-          className="btn-export" 
-          onClick={handleGoForge}
-          disabled={forgeStatus !== 'idle' || (selectedEngine === 'openrouter' && !openRouterApiKeyEffective)}
-          title="🤖 Usar IA para melhorar o texto atual"
-        >
-          <Sparkles size={14} />
-          <span>✨ Melhorar com IA</span>
-        </button>
-        {forgeStatus !== 'idle' && (
-          <button className="btn-export cancel" onClick={cancelForge}>
-            <X size={14} />
-            <span>⏹️ Cancelar</span>
-          </button>
-        )}
-        <button 
-          className="btn-export" 
-          onClick={onExportPDF} 
-          disabled={!activeProjectId}
-          title="📄 Gerar PDF profissional"
-        >
-          <FileText size={14} />
-          <span>📄 Exportar PDF</span>
-        </button>
-        <button 
-          className="btn-export" 
-          onClick={onExportHTML} 
-          disabled={!activeProjectId}
-          title="🌐 Gerar arquivo HTML"
-        >
-          <FileText size={14} />
-          <span>🌐 Exportar HTML</span>
-        </button>
-      </div>
-
-      {/* Import & Sync */}
-      <div className="sidebar-divider" />
-      <div className="sidebar-section-label"><Upload size={12} /> Ficheiros e backups</div>
-      <p className="sidebar-io-explainer">
-        Isto <strong>não</strong> substitui «Criar com IA»: serve para <strong>abrir um projeto guardado</strong>, converter TXT/MD/PDF em projeto, ou <strong>restaurar backup</strong>.
-      </p>
-      <div className="export-btns">
-        <button 
-          className="btn-export btn-export-multiline"
-          onClick={() => importFileRef.current?.click()}
-          title="Projeto .ebookforge ou JSON; ou manuscrito TXT, MD, PDF (conversão com IA se configurada)"
-        >
-          <Upload size={14} className="btn-export-icon" />
-          <span className="btn-export-lines">
-            <span className="btn-export-title">Abrir ou converter ficheiro</span>
-            <span className="btn-export-sub">.ebookforge, .json, .txt, .md, .pdf</span>
-          </span>
-        </button>
-        <button 
-          className="btn-export btn-export-multiline"
-          onClick={() => importBackupFileRef.current?.click()}
-          title="Ficheiro de backup com vários ebooks (JSON de exportação completa)"
-        >
-          <Upload size={14} className="btn-export-icon" />
-          <span className="btn-export-lines">
-            <span className="btn-export-title">Restaurar backup completo</span>
-            <span className="btn-export-sub">vários ebooks de uma vez</span>
-          </span>
-        </button>
-        <button 
-          className="btn-export" 
-          onClick={handleExportCurrent}
-          disabled={!activeProjectId}
-          title="⬇️ Baixar ebook atual"
-        >
-          <Download size={14} />
-          <span>⬇️ Salvar Este Ebook</span>
-        </button>
-        <button 
-          className="btn-export" 
-          onClick={handleExportAllProjects}
-          disabled={projects.length === 0}
-          title="📦 Fazer backup de todos os ebooks"
-        >
-          <Download size={14} />
-          <span>📦 Backup Completo</span>
-        </button>
-      </div>
-
-      {/* Hidden File Inputs */}
-      <input 
-        ref={importFileRef}
-        type="file" 
-        accept=".ebookforge,.json,.txt,.md,.markdown,.pdf"
-        onChange={handleImportProject}
-        style={{ display: 'none' }}
-      />
-      <input 
-        ref={importBackupFileRef}
-        type="file" 
-        accept=".json" 
-        onChange={handleImportBackup}
-        style={{ display: 'none' }}
-      />
-
-      {/* Loading Modal for Import/Conversion */}
-      {isImporting && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          backdropFilter: 'blur(2px)',
-        }}>
-          <div style={{
-            background: '#1a1a2e',
-            borderRadius: 12,
-            padding: 24,
-            maxWidth: 400,
-            textAlign: 'center',
-            border: '1px solid rgba(255,255,255,0.1)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-          }}>
-            <div style={{
-              fontSize: 32,
-              marginBottom: 16,
-              animation: 'spin 2s linear infinite',
-            }}>
-              🤖
+              <button className="btn-backup" onClick={() => importBackupFileRef.current?.click()}>
+                <Upload size={12} /> Importar Backup (.json)
+              </button>
+              <button className="btn-backup" onClick={handleExportAllProjects}>
+                <Download size={12} /> Exportar Backup (.json)
+              </button>
             </div>
-            <div style={{
-              fontSize: 16,
-              fontWeight: 600,
-              marginBottom: 8,
-              color: '#fff',
-            }}>
-              Convertendo Documento
-            </div>
-            <div style={{
-              fontSize: 13,
-              color: '#aaa',
-              marginBottom: 16,
-              minHeight: 40,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              {importProgress}
-            </div>
-            <div style={{
-              width: '100%',
-              height: 3,
-              background: 'rgba(255,255,255,0.1)',
-              borderRadius: 2,
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                height: '100%',
-                background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
-                animation: 'progress 2s ease-in-out infinite',
-                width: '100%',
-              }} />
-            </div>
-            <style>{`
-              @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-              }
-              @keyframes progress {
-                0%, 100% { width: 0; }
-                50% { width: 100%; }
-              }
-            `}</style>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Import Progress Overlay */}
+        {isImporting && (
+          <div className="sidebar-overlay progress-overlay">
+            <div className="progress-content">
+              <Loader2 size={24} className="animate-spin" />
+              <p>{importProgress}</p>
+              <button className="btn-cancel-small" onClick={cancelForge}>Cancelar</button>
+            </div>
+          </div>
+        )}
+      </div>
     </aside>
   );
 };

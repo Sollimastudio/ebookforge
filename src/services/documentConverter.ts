@@ -54,18 +54,22 @@ async function extractTextFromEpub(file: File): Promise<string> {
     const textParts: string[] = [];
     const parser = new DOMParser();
     
-    for (const [filename, fileEntry] of Object.entries(zipContent.files)) {
+    // Ordena os arquivos para manter a sequência lógica (geralmente numerados ou listados no OPF)
+    const sortedFiles = Object.keys(zipContent.files).sort();
+    
+    for (const filename of sortedFiles) {
+      const fileEntry = zipContent.files[filename];
       if ((filename.endsWith('.xhtml') || filename.endsWith('.html')) && !fileEntry.dir) {
         try {
           const xmlText = await fileEntry.async('text');
           const xmlDoc = parser.parseFromString(xmlText, 'text/html');
           
           // Remove scripts e styles
-          xmlDoc.querySelectorAll('script, style').forEach(el => el.remove());
+          xmlDoc.querySelectorAll('script, style, nav, footer, header').forEach(el => el.remove());
           
           // Extrai o texto
           if (xmlDoc.body?.textContent) {
-            textParts.push(xmlDoc.body.textContent);
+            textParts.push(xmlDoc.body.textContent.trim());
           }
         } catch {}
       }
@@ -88,6 +92,8 @@ async function extractTextFromRtf(file: File): Promise<string> {
       .replace(/\{\\\[^{}]*\}/g, '') // Remove comandos RTF
       .replace(/[{}]/g, '')
       .replace(/\\'/g, '')
+      .replace(/\\par/g, '\n')
+      .replace(/\\[a-z0-9-]+/g, '')
       .replace(/\s+/g, ' ')
       .trim();
   } catch (error) {
@@ -116,7 +122,7 @@ async function extractTextFromOdt(file: File): Promise<string> {
     const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
     
     // Extrai todos os elementos de texto <text:p> (parágrafos)
-    const textElements = xmlDoc.querySelectorAll('text\\:p, text\\:span');
+    const textElements = xmlDoc.querySelectorAll('text\\:p, text\\:span, text\\:h');
     const textParts: string[] = [];
     
     textElements.forEach(elem => {
@@ -216,13 +222,13 @@ INSTRUÇÕES CRÍTICAS PARA QUALIDADE PREMIUM:
 11. Retorne APENAS HTML válido, sem markdown, sem explicações, sem código
 
 QUALIDADE PREMIUM OBRIGATÓRIA:
-- Sem resumos ou abreviações
-- Conteúdo completo e detalhado
-- Estrutura sofisticada e profissional
-- Sem erros gramaticais ou ortográficos
-- Diagramação clara e elegante
-- Títulos e subtítulos bem marcados
-- Estética de leitura super agradável
+- Sem resumos ou abreviações: se o texto original tem 10 páginas, o HTML deve refletir todo esse conteúdo.
+- Conteúdo completo e detalhado: não pule partes, não resuma capítulos.
+- Estrutura sofisticada e profissional: use a hierarquia correta de títulos.
+- Sem erros gramaticais ou ortográficos.
+- Diagramação clara e elegante.
+- Títulos e subtítulos bem marcados.
+- Estética de leitura super agradável.
 
 Se o documento é Markdown, converta:
 - # para <h1>
@@ -238,10 +244,11 @@ Se o documento é texto puro, organize em parágrafos e seções significativas 
       },
       {
         role: 'user',
-        content: `Converta este documento para HTML bem estruturado com qualidade premium (best-seller):
+        content: `Converta este documento para HTML bem estruturado com qualidade premium (best-seller). 
+IMPORTANTE: Não resuma nada. Mantenha a integridade total do texto original, apenas formatando-o com tags HTML sofisticadas.
 
 ---
-${rawText.substring(0, 50000)}${rawText.length > 50000 ? '\n\n[... documento continua ...]' : ''}
+${rawText.substring(0, 60000)}${rawText.length > 60000 ? '\n\n[... documento continua ...]' : ''}
 ---
 
 Responda com HTML válido pronto para ser usado em um editor WYSIWYG. Qualidade premium obrigatória: completo, sem resumos, estrutura sofisticada, sem erros.`
@@ -251,7 +258,7 @@ Responda com HTML válido pronto para ser usado em um editor WYSIWYG. Qualidade 
     const htmlContent = await callOpenRouter(messages, {
       apiKey: effectiveKey,
       model: DEFAULT_MODEL,
-      timeout: 180000,
+      timeout: 300000, // Aumentado para 5 minutos para textos longos
       maxTokens: 16384,
     });
 

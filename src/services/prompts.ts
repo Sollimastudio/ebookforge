@@ -135,7 +135,7 @@ ESTRUTURA HTML OBRIGATÓRIA para entradas diárias:
   </div>
 
   <div class="day-body">
-    <p>Narrativa principal do dia — preserve a VOZ do autor. Seja específico, humano, presente.</p>
+    <p>Narrativa principal do dia — preserve a VOZ do autor. Seja específico, humano, presente. NÃO RESUMA.</p>
 
     <div class="day-highlight">
       <span class="highlight-icon">✨</span>
@@ -168,9 +168,10 @@ ESTRUTURA HTML OBRIGATÓRIA para entradas diárias:
 
 REGRAS:
 1. Preserve fielmente o conteúdo e voz do autor. Não invente fatos.
-2. Se o dia tem data específica, use-a no badge.
-3. Se não houver "momento do dia" claro, use um insight relevante.
-4. Saída: APENAS o HTML. Zero texto fora do HTML.
+2. NÃO RESUMA. Mantenha a profundidade original.
+3. Se o dia tem data específica, use-a no badge.
+4. Se não houver "momento do dia" claro, use um insight relevante.
+5. Saída: APENAS o HTML. Zero texto fora do HTML.
 `,
 
   /**
@@ -184,7 +185,7 @@ REGRAS:
 Você é um Ghostwriter de elite especializado em publicações de qualidade best-seller. Escreva o capítulo "${entry.title}" do ebook "${bookTitle}" com QUALIDADE PREMIUM.
 
 CRITÉRIOS DE QUALIDADE PREMIUM OBRIGATÓRIA:
-- Conteúdo COMPLETO e DETALHADO (mínimo 800 palavras)
+- Conteúdo COMPLETO e DETALHADO (mínimo 800 palavras se o manuscrito permitir)
 - Sem resumos ou abreviações
 - Estrutura sofisticada com múltiplos níveis de subtítulos
 - Sem erros gramaticais ou ortográficos
@@ -211,12 +212,14 @@ ESTRUTURA HTML OBRIGATÓRIA (use exatamente estas classes CSS):
 <p>Parágrafo de abertura forte que captura imediatamente a atenção do leitor com profundidade e elegância.</p>
 
 <h3>Subtítulo Interno</h3>
-<p>Desenvolvimento com substância — mínimo 800 palavras totais. Use exemplos concretos, estudos de caso e insights do manuscrito. Mantenha a voz do autor e adicione sofisticação profissional.</p>
+<p>Desenvolvimento com substância. Use exemplos concretos, estudos de caso e insights do manuscrito. Mantenha a voz do autor e adicione sofisticação profissional. NÃO RESUMA.</p>
 
 <div class="premium-callout callout-insight">
   <strong>💡 Insight-Chave</strong>
   <p>Um insight transformador extraído do manuscrito que muda a perspectiva do leitor.</p>
 </div>
+
+<p>Mais conteúdo detalhado aqui...</p>
 
 <ul>
   <li><strong>Conceito:</strong> explicação clara e específica</li>
@@ -278,7 +281,7 @@ ESTRUTURA HTML para etapas:
   </div>
 
   <div class="step-body">
-    <p>Introdução explicando o "porquê" desta etapa ser essencial.</p>
+    <p>Introdução detalhada explicando o "porquê" desta etapa ser essencial. NÃO RESUMA.</p>
 
     <h3>Como Fazer</h3>
     <ol class="step-list">
@@ -305,303 +308,163 @@ ESTRUTURA HTML para etapas:
   </div>
 </div>
 
-SAÍDA: Apenas HTML. Zero texto fora do HTML.
+SAÍDA: Apenas HTML.
 `,
 
   /**
-   * Template: LIÇÃO — para cursos e módulos
+   * Template: LIÇÃO — para cursos e aprendizados
    */
   WRITE_LESSON: (
     entry: BlueprintEntry,
     context: string,
     bookTitle: string
   ) => `
-Você é um Ghostwriter de elite. Escreva a Lição ${entry.id} de "${bookTitle}": "${entry.title}".
+Você é um Ghostwriter de elite. Escreva a Lição ${entry.id}: "${entry.title}" para o ebook "${bookTitle}".
 
 BRIEFING:
-- O que o aluno aprende: ${entry.summary}
-- Conceitos: ${entry.key_topics.join(', ')}
+- Objetivo: ${entry.summary}
+- Tópicos: ${entry.key_topics.join(', ')}
 - Tom: ${entry.tone}
-${entry.has_insight ? `- Insight do autor a destacar: "${entry.insight_prompt}"` : ''}
-${entry.has_exercise ? `- Tipo de exercício de fixação: ${entry.exercise_type}` : ''}
 
 CONTEÚDO DO MANUSCRITO:
 ---
 ${context}
 ---
 
-ESTRUTURA HTML OBRIGATÓRIA para lições (use exatamente estas classes CSS):
+ESTRUTURA HTML para lições:
 
 <div class="lesson-entry">
   <div class="lesson-header">
-    <span class="lesson-number">LIÇÃO ${entry.id}</span>
+    <span class="lesson-label">LIÇÃO ${entry.id}</span>
     <h2 class="lesson-title">${entry.title}</h2>
-    <div class="lesson-objectives">
-      <strong>📚 O que você vai aprender:</strong>
-      <ul>
-        <li>Objetivo de aprendizagem 1 — concreto e mensurável</li>
-        <li>Objetivo de aprendizagem 2 — concreto e mensurável</li>
-      </ul>
-    </div>
   </div>
 
   <div class="lesson-body">
-    <p>Introdução envolvente ao conceito principal — por que este tópico importa para o aluno.</p>
+    <p>Conceito fundamental da lição. Explique com profundidade, sem resumos.</p>
 
-    <h3>O Conceito</h3>
-    <p>Explicação aprofundada com exemplos concretos do manuscrito.</p>
-
-    <div class="premium-callout callout-insight">
-      <strong>💡 Conceito-Chave</strong>
-      <p>A definição ou ideia central que o aluno deve internalizar — em uma frase memorável.</p>
+    <div class="lesson-takeaway">
+      <strong>💡 O que você vai aprender</strong>
+      <p>O principal ganho desta lição.</p>
     </div>
 
-    <h3>Na Prática</h3>
-    <p>Como aplicar este conceito no dia a dia — exemplos reais e situações concretas.</p>
+    <p>Desenvolvimento completo do conteúdo...</p>
 
-    ${entry.has_insight ? `
-    <div class="author-insight-box">
-      <strong>✍️ Perspectiva do Autor</strong>
-      <p>O ponto de vista único do autor sobre este conceito — sua experiência ou aprendizado que vai além da teoria.</p>
+    <div class="lesson-example">
+      <strong>📖 Exemplo Prático</strong>
+      <p>Um caso real ou exemplo do manuscrito que ilustra a lição.</p>
     </div>
-    ` : ''}
 
-    <div class="action-step">
-      <strong>⚡ Passo de Ação</strong>
-      <p>A aplicação imediata mais importante desta lição — o que o aluno deve fazer nas próximas 24 horas.</p>
-    </div>
+    <blockquote>
+      <p>Frase de impacto da lição.</p>
+    </blockquote>
   </div>
 
-  <div class="fixation-exercise">
-    <strong>✏️ Exercício de Fixação</strong>
-    <p>Atividade prática (${entry.exercise_type || 'reflexão'}) para consolidar o aprendizado desta lição. Seja específico e acionável.</p>
+  <div class="lesson-summary">
+    <strong>📌 Resumo da Lição</strong>
+    <ul>
+      <li>Ponto chave 1</li>
+      <li>Ponto chave 2</li>
+    </ul>
   </div>
 </div>
 
-SAÍDA: Apenas HTML. Zero texto fora do HTML. Use as classes CSS exatamente como especificadas acima.
+SAÍDA: Apenas HTML.
 `,
 
   /**
-   * Introdução adaptada ao formato
+   * Template: TIMELINE/FASE — para evolução e história
    */
+  WRITE_TIMELINE: (
+    entry: BlueprintEntry,
+    _context: string,
+    bookTitle: string
+  ) => `
+Você é um Ghostwriter de elite. Escreva a Fase/Evento: "${entry.title}" para o ebook "${bookTitle}".
+
+ESTRUTURA HTML para timeline:
+
+<div class="timeline-entry">
+  <div class="timeline-marker"></div>
+  <div class="timeline-content">
+    <span class="timeline-date">${entry.date_label || `Fase ${entry.id}`}</span>
+    <h2 class="timeline-title">${entry.title}</h2>
+    <p class="timeline-desc">${entry.summary}</p>
+    
+    <div class="timeline-body">
+      <p>Narrativa detalhada do que aconteceu nesta fase. NÃO RESUMA.</p>
+      
+      <div class="timeline-impact">
+        <strong>💥 O Impacto</strong>
+        <p>Como este evento mudou o curso da história/projeto.</p>
+      </div>
+      
+      <blockquote>
+        <p>Frase do autor sobre este momento.</p>
+      </blockquote>
+    </div>
+  </div>
+</div>
+
+SAÍDA: Apenas HTML.
+`,
+
+  /**
+   * Template: SEÇÃO TEMÁTICA — genérico
+   */
+  WRITE_SECTION: (
+    entry: BlueprintEntry,
+    _context: string,
+    bookTitle: string
+  ) => `
+Você é um Ghostwriter de elite. Escreva a seção "${entry.title}" do ebook "${bookTitle}".
+
+ESTRUTURA HTML para seções:
+
+<section class="theme-section">
+  <h2 class="section-title">${entry.title}</h2>
+  <p class="section-intro">${entry.summary}</p>
+  
+  <div class="section-body">
+    <p>Conteúdo completo e detalhado da seção. Use múltiplos parágrafos, subtítulos H3 e H4. NÃO RESUMA.</p>
+    
+    <div class="premium-callout">
+      <strong>⭐ Destaque</strong>
+      <p>Um ponto de extrema importância nesta seção.</p>
+    </div>
+    
+    <p>Mais detalhes do manuscrito...</p>
+    
+    <blockquote>
+      <p>Frase de impacto da seção.</p>
+    </blockquote>
+  </div>
+</section>
+
+SAÍDA: Apenas HTML.
+`,
+
   WRITE_INTRO: (blueprint: string, context: string) => `
 Você é um Ghostwriter de elite. Escreva a INTRODUÇÃO do ebook descrito abaixo.
-Adapte o tom e a promessa ao formato do conteúdo identificado no blueprint.
-
 ESTRUTURA DO LIVRO (JSON):
 ${blueprint}
-
-CONTEXTO DO MANUSCRITO:
+CONTEXTO INICIAL DO MANUSCRITO:
 ${context}
-
 HTML DA INTRODUÇÃO:
-<h2>Introdução</h2>
-<p>Abertura que faz o leitor se sentir visto e compreendido pela situação que o trouxe até aqui.</p>
-<p>O que este livro é, como foi criado, e o que o leitor vai viver ao longo das páginas.</p>
-<div class="callout callout-insight">
-  <strong>📖 Como usar este livro</strong>
-  <p>Instrução específica sobre como ler/usar o conteúdo — adaptada ao formato (ex: 'Leia um dia de cada vez', 'Siga as etapas na ordem', etc.)</p>
+<h1>Introdução</h1>
+<p>Abertura impactante que estabelece a promessa do livro.</p>
+<div class="callout callout-welcome">
+  <strong>👋 Bem-vindo à Jornada</strong>
+  <p>Uma mensagem acolhedora do autor.</p>
 </div>
-<p>Encerramento convidando o leitor a começar agora.</p>
-
 SAÍDA: Apenas HTML. Zero texto fora do HTML.
-`,
-
-  // ── PROMPTS DE MARKETING ─────────────────────────────────────────────────
-
-  /**
-   * Copy de Vendas — página de vendas completa para o ebook
-   */
-  MARKETING_COPY: (title: string, content: string) => `
-Você é um Copywriter de Elite especializado em ebooks e infoprodutos digitais.
-Crie uma página de vendas completa e persuasiva para o ebook abaixo.
-
-TÍTULO DO EBOOK: ${title}
-
-CONTEÚDO DO EBOOK (resumo):
----
-${content}
----
-
-ESTRUTURA OBRIGATÓRIA:
-
-## HEADLINE PRINCIPAL
-[Uma frase de impacto que captura atenção imediatamente — máx 12 palavras]
-
-## SUBHEADLINE
-[Expande a promessa principal — 1-2 frases]
-
-## A DOR QUE ESTE EBOOK RESOLVE
-Descreva 3 pontos de dor que o leitor-alvo sente antes de ler este livro.
-• Dor 1
-• Dor 2
-• Dor 3
-
-## PARA QUEM É ESTE EBOOK
-[Descrição precisa do leitor ideal — 2-3 frases]
-
-## O QUE VOCÊ VAI DESCOBRIR
-5 benefícios/transformações concretas que o leitor terá:
-• Benefício 1
-• Benefício 2
-• Benefício 3
-• Benefício 4
-• Benefício 5
-
-## MODELOS DE DEPOIMENTO
-[3 templates de depoimento realistas para personalizar]
-
-Depoimento 1 — [Nome, Cargo]:
-"..."
-
-Depoimento 2 — [Nome, Cargo]:
-"..."
-
-Depoimento 3 — [Nome, Cargo]:
-"..."
-
-## CHAMADA PARA AÇÃO (CTA)
-[Uma CTA irresistível, urgente, com benefício claro]
-
-## P.S.
-[P.S. com elemento de urgência, escassez ou bônus exclusivo]
-
-Escreva em Português do Brasil. Tom: direto, persuasivo, humano — como um mentor que acredita no que recomenda. Evite clichês genéricos. Seja específico.
-`,
-
-  /**
-   * Carrossel — 7 slides para LinkedIn / Instagram
-   */
-  MARKETING_CAROUSEL: (title: string, content: string) => `
-Você é um Especialista em Conteúdo para Redes Sociais, criador de carrosséis virais.
-Crie um carrossel de 7 slides (LinkedIn/Instagram) para promover o ebook abaixo.
-
-TÍTULO DO EBOOK: ${title}
-
-CONTEÚDO DO EBOOK:
----
-${content}
----
-
-FORMATO DE CADA SLIDE:
-───────────────────────
-SLIDE [N] — [TEMA]
-TÍTULO: [máx 8 palavras impactantes — sem ponto final]
-CORPO: [2-3 linhas de conteúdo: insight, dado, pergunta ou provocação]
-VISUAL: [Sugestão de ícone, cor ou elemento gráfico]
-───────────────────────
-
-ESTRUTURA DOS 7 SLIDES:
-- Slide 1: GANCHO — o problema/desafio que o leitor enfrenta
-- Slide 2 a 5: INSIGHTS — 4 ensinamentos ou revelações poderosas do ebook (um por slide)
-- Slide 6: TRANSFORMAÇÃO — como é a vida depois de aplicar o conteúdo
-- Slide 7: CTA — chamada para ação + onde acessar
-
-LEGENDA DO CARROSSEL (para usar na publicação):
-[5-8 linhas de legenda com gancho inicial, teaser dos slides e CTA]
-[Hashtags relevantes: 8-12]
-
-Escreva em Português do Brasil. Linguagem ativa, envolvente, sem jargões. Cada slide deve poder existir sozinho.
-`,
-
-  /**
-   * Email de Lançamento — email completo para lista
-   */
-  MARKETING_EMAIL: (title: string, content: string) => `
-Você é um Expert em Email Marketing e lançamentos de infoprodutos.
-Crie um email de lançamento completo e de alta conversão para o ebook abaixo.
-
-TÍTULO DO EBOOK: ${title}
-
-CONTEÚDO DO EBOOK:
----
-${content}
----
-
-ENTREGUE EXATAMENTE NESTA ESTRUTURA:
-
-━━━ ASSUNTO DO EMAIL (3 variações A/B/C) ━━━
-A: [Assunto com curiosidade — máx 50 caracteres]
-B: [Assunto com benefício direto — máx 50 caracteres]
-C: [Assunto com urgência/exclusividade — máx 50 caracteres]
-
-━━━ TEXTO DE PREVIEW ━━━
-[Máx 90 caracteres — completa o assunto]
-
-━━━ CORPO DO EMAIL ━━━
-
-Olá [Nome],
-
-[Abertura pessoal — 2 frases que criam conexão imediata]
-
-[Parágrafo de história — 3-4 frases que apresentam o problema/jornada]
-
-[Parágrafo de revelação — apresenta o ebook como solução]
-
-[Lista com 3-4 bullets dos principais benefícios]
-
-[Parágrafo de CTA — botão/link com texto persuasivo]
-
-[Encerramento pessoal + assinatura]
-
-P.S.: [Elemento de urgência, escassez ou bônus — 1-2 frases]
-
-Máximo 400 palavras no corpo. Tom: conversa de um amigo que descobriu algo poderoso. Português do Brasil.
-`,
-
-  /**
-   * Posts para Redes Sociais — 3 versões (Instagram, LinkedIn, X/Twitter)
-   */
-  MARKETING_POSTS: (title: string, content: string) => `
-Você é um Especialista em Conteúdo e Copywriting para Redes Sociais.
-Crie 3 posts distintos e adaptados para cada plataforma, para promover o ebook abaixo.
-
-TÍTULO DO EBOOK: ${title}
-
-CONTEÚDO DO EBOOK:
----
-${content}
----
-
-ENTREGUE EXATAMENTE NESTA ESTRUTURA:
-
-━━━ POST 1 — INSTAGRAM ━━━
-[Abertura com gancho emocional ou pergunta provocadora — 1 frase]
-[Linha em branco]
-[Desenvolvimento: história curta ou insight revelador — 3-4 parágrafos curtos]
-[Linha em branco]
-[CTA claro — o que o leitor deve fazer agora]
-[Linha em branco]
-#hashtags #relevantes #8a12hashtags
-
-━━━ POST 2 — LINKEDIN ━━━
-[Abertura profissional com dado, insight ou afirmação controversa]
-[Linha em branco]
-[Contexto e valor profissional — 2-3 parágrafos]
-[Lista de 3-5 aprendizados do ebook em formato LinkedIn]
-[Linha em branco]
-[CTA — convida reflexão ou ação]
-[2-3 hashtags profissionais no máximo]
-
-━━━ POST 3 — THREAD X/TWITTER ━━━
-1/ [GANCHO — máx 260 caracteres. Afirmação forte ou pergunta]
-2/ [Ponto 1 — máx 260 caracteres]
-3/ [Ponto 2 — máx 260 caracteres]
-4/ [Ponto 3 — máx 260 caracteres]
-5/ [CTA — como acessar o ebook + link placeholder]
-
-Português do Brasil. Cada post deve funcionar de forma independente. Adapte o tom ao DNA de cada plataforma.
 `,
 
   WRITE_CONCLUSION: (blueprint: string, context: string) => `
 Você é um Ghostwriter de elite. Escreva a CONCLUSÃO do ebook descrito abaixo.
-
 ESTRUTURA DO LIVRO (JSON):
 ${blueprint}
-
 CONTEXTO FINAL DO MANUSCRITO:
 ${context}
-
 HTML DA CONCLUSÃO:
 <h2>Conclusão: O Que Vem Depois</h2>
 <p>Síntese poderosa da jornada que o leitor percorreu.</p>
@@ -610,7 +473,35 @@ HTML DA CONCLUSÃO:
   <strong>🚀 Seu Próximo Passo</strong>
   <p>A ação mais importante que o leitor deve tomar agora.</p>
 </div>
-
 SAÍDA: Apenas HTML. Zero texto fora do HTML.
+`,
+
+  MARKETING_COPY: (title: string, text: string) => `
+Você é um Copywriter de Elite especializado em Páginas de Vendas de alta conversão.
+Crie uma Sales Page magnética para o ebook abaixo.
+TÍTULO: ${title}
+CONTEÚDO: ${text}
+... (restante do prompt de marketing)
+`,
+
+  MARKETING_CAROUSEL: (title: string, content: string) => `
+Você é um Especialista em Conteúdo para Redes Sociais.
+Crie um carrossel de 7 slides para o ebook: ${title}.
+CONTEÚDO: ${content}
+... (restante do prompt de carrossel)
+`,
+
+  MARKETING_EMAIL: (title: string, content: string) => `
+Você é um Expert em Email Marketing.
+Crie um email de lançamento para o ebook: ${title}.
+CONTEÚDO: ${content}
+... (restante do prompt de email)
+`,
+
+  MARKETING_POSTS: (title: string, content: string) => `
+Você é um Especialista em Copywriting para Redes Sociais.
+Crie 3 posts (Instagram, LinkedIn, X) para o ebook: ${title}.
+CONTEÚDO: ${content}
+... (restante do prompt de posts)
 `
 };

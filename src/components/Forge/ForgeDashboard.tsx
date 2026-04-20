@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Upload, Sparkles, AlertCircle, FileText,
   ChevronDown, Zap, Crown, Loader2, X, CheckCircle2
@@ -67,38 +67,40 @@ export const ForgeDashboard = () => {
   const [selectedTheme, setSelectedTheme] = useState<Theme>('obsidian-noir');
   const [isDragging, setIsDragging] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
+  const [customModelInput, setCustomModelInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isRunning = forgeStatus !== 'idle' && forgeStatus !== 'finished' && forgeStatus !== 'error';
+
+  // Sincroniza o input customizado com o modelo selecionado se ele não estiver na lista padrão
+  useEffect(() => {
+    const isStandard = AVAILABLE_MODELS.some(m => m.id === selectedModel);
+    if (!isStandard && selectedModel) {
+      setCustomModelInput(selectedModel);
+    }
+  }, [selectedModel]);
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel)
     ?? { id: selectedModel, label: selectedModel, speed: 'balanced' as const };
 
   const handleForge = useCallback(() => {
     if (inputMode === 'paste') {
+      if (!pastedText.trim()) {
+        alert('Por favor, cole o texto do seu manuscrito antes de gerar.');
+        return;
+      }
       forgeEbookFromText(pastedText, selectedTheme);
     }
   }, [inputMode, pastedText, selectedTheme, forgeEbookFromText]);
 
   const handleFile = useCallback((file: File) => {
     // Aceita múltiplos formatos: PDF, DOCX, EPUB, RTF, ODT, TXT, MD
-    const acceptedTypes = [
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
-      'application/epub+zip',
-      'application/rtf',
-      'text/plain',
-      'text/markdown',
-      'application/vnd.oasis.opendocument.text' // ODT
-    ];
-    
     const filename = file.name.toLowerCase();
     const acceptedExtensions = ['.pdf', '.docx', '.epub', '.rtf', '.txt', '.md', '.markdown', '.odt'];
     
-    const hasValidType = acceptedTypes.includes(file.type);
     const hasValidExtension = acceptedExtensions.some(ext => filename.endsWith(ext));
     
-    if (!hasValidType && !hasValidExtension) {
+    if (!hasValidExtension) {
       alert('Por favor, envie um arquivo em um dos formatos suportados: PDF, DOCX, EPUB, RTF, ODT, TXT ou MD.');
       return;
     }
@@ -116,7 +118,6 @@ export const ForgeDashboard = () => {
   }, [handleFile]);
 
   const wordCount = pastedText.trim().split(/\s+/).filter(Boolean).length;
-  const charCount = pastedText.length;
 
   // ── Estados visuais de progresso ─────────────────────────────────────────
   if (isRunning) {
@@ -146,8 +147,8 @@ export const ForgeDashboard = () => {
           Zero edição manual. A IA lê tudo, estrutura, reescreve e entrega com design premium.
         </p>
         <p className="forge-flow-hint">
-          <strong>Passo 1:</strong> escolha modelo e tema abaixo. <strong>Passo 2:</strong> cole o texto <em>ou</em> envie o PDF.
-          <strong> Passo 3:</strong> use o botão verde <strong>«Gerar ebook com IA»</strong> (logo abaixo do texto — pode precisar de descer a página).
+          <strong>Passo 1:</strong> escolha modelo e tema abaixo. <strong>Passo 2:</strong> cole o texto <em>ou</em> envie o arquivo (PDF, DOCX, EPUB, etc).
+          <strong> Passo 3:</strong> use o botão verde <strong>«Gerar ebook com IA»</strong>.
         </p>
       </div>
 
@@ -157,7 +158,7 @@ export const ForgeDashboard = () => {
           <AlertCircle size={18} />
           <div>
             <strong>API Key necessária</strong>
-            <p>Defina <code>VITE_OPENROUTER_API_KEY</code> no ficheiro <code>.env</code> na raiz do projeto (reinicie o servidor de desenvolvimento), ou configure a chave na barra lateral (ícone de chave 🔑). Também pode usar o motor Ollama Local nas Configurações.</p>
+            <p>Defina <code>VITE_OPENROUTER_API_KEY</code> no ficheiro <code>.env</code> na raiz do projeto, ou configure a chave na barra lateral (ícone de chave 🔑).</p>
           </div>
         </div>
       )}
@@ -166,7 +167,7 @@ export const ForgeDashboard = () => {
           <CheckCircle2 size={18} color="#10b981" />
           <div>
             <strong>Motor Local Ativo</strong>
-            <p>Usando Ollama local (grátis). Certifique-se que o Ollama está rodando no teu Mac.</p>
+            <p>Usando Ollama local (grátis). Certifique-se que o Ollama está rodando no seu computador.</p>
           </div>
         </div>
       )}
@@ -203,18 +204,29 @@ export const ForgeDashboard = () => {
                 {selectedModel === m.id && <CheckCircle2 size={13} className="ml-auto" />}
               </button>
             ))}
-            <div className="model-custom-row">
+            <div className="model-custom-row" onClick={e => e.stopPropagation()}>
               <input
                 type="text"
                 className="model-custom-input"
                 placeholder="Ou cole outro ID do OpenRouter..."
+                value={customModelInput}
+                onChange={e => setCustomModelInput(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
-                    const v = (e.target as HTMLInputElement).value.trim();
+                    const v = customModelInput.trim();
                     if (v) { setSelectedModel(v); setShowModelMenu(false); }
                   }
                 }}
               />
+              <button 
+                className="btn-apply-model"
+                onClick={() => {
+                  const v = customModelInput.trim();
+                  if (v) { setSelectedModel(v); setShowModelMenu(false); }
+                }}
+              >
+                Aplicar
+              </button>
             </div>
           </div>
         )}
@@ -264,207 +276,139 @@ export const ForgeDashboard = () => {
           <FileText size={14} /> O seu manuscrito
         </label>
         <p className="forge-section-lead">
-          Isto <strong>não</strong> é anexo ao projeto atual: cada geração cria um <strong>ebook novo</strong> na lista à esquerda.
+          Cada geração cria um <strong>ebook novo</strong> na lista à esquerda.
         </p>
         <div className="input-mode-tabs">
           <button
             className={`input-tab ${inputMode === 'paste' ? 'active' : ''}`}
             onClick={() => setInputMode('paste')}
-            type="button"
           >
-            <FileText size={14} /> Colar texto do manuscrito
+            <Sparkles size={14} />
+            Colar Texto
           </button>
           <button
             className={`input-tab ${inputMode === 'pdf' ? 'active' : ''}`}
             onClick={() => setInputMode('pdf')}
-            type="button"
           >
-            <Upload size={14} /> Enviar PDF do manuscrito
+            <Upload size={14} />
+            Enviar Arquivo (PDF, DOCX, EPUB...)
           </button>
         </div>
 
-        {/* MODO: COLAR TEXTO */}
-        {inputMode === 'paste' && (
+        {inputMode === 'paste' ? (
           <div className="paste-area">
             <textarea
-              className="manuscript-textarea"
-              placeholder="Cole aqui o texto completo do manuscrito (livro, notas, transcrição). Depois prima o botão verde «Gerar ebook com IA» logo abaixo."
+              className="forge-textarea"
+              placeholder="Cole aqui o conteúdo bruto do seu manuscrito (capítulos, notas, diários...)"
               value={pastedText}
               onChange={e => setPastedText(e.target.value)}
-              rows={14}
             />
-            {pastedText.length > 0 && (
-              <div className="paste-stats">
-                <span>📝 {wordCount.toLocaleString()} palavras</span>
-                <span>·</span>
-                <span>{charCount.toLocaleString()} caracteres</span>
-                {wordCount > 500 && (
-                  <span className="paste-ok">
-                    <CheckCircle2 size={13} /> Pronto para Forjar
-                  </span>
-                )}
-                {wordCount > 0 && wordCount < 500 && <span className="paste-warn">⚠ Cole mais conteúdo para melhor resultado</span>}
-              </div>
-            )}
-            <div className="paste-cta-block">
+            <div className="paste-stats">
+              <span>{wordCount} palavras</span>
               <button
-                type="button"
-                className="btn-forge-main"
+                className="btn-forge-action"
+                disabled={!pastedText.trim() || openRouterBlocked}
                 onClick={handleForge}
-                disabled={openRouterBlocked || pastedText.trim().length < 50}
-                title={openRouterBlocked ? 'Configure sua chave de API na barra lateral para liberar a geração' : undefined}
               >
-                <Sparkles size={18} />
-                {openRouterBlocked
-                  ? 'Configure a chave de API na barra lateral (🔑)'
-                  : pastedText.trim().length < 50
-                    ? `Cole pelo menos 50 caracteres (faltam ${Math.max(0, 50 - pastedText.trim().length)})`
-                    : 'Gerar ebook com IA — passo seguinte'}
+                <Sparkles size={16} />
+                Gerar ebook com IA
               </button>
-              {openRouterBlocked && (
-                <p className="paste-cta-api-hint">
-                  <AlertCircle size={13} /> Clique no ícone de chave 🔑 na barra lateral e cole sua chave OpenRouter — ou mude para o motor Ollama Local nas Configurações.
-                </p>
-              )}
-              {!openRouterBlocked && (
-                <p className="paste-cta-note">
-                  O mesmo botão repete-se no fim da página. Use qualquer um.
-                </p>
-              )}
             </div>
           </div>
-        )}
-
-        {/* MODO: PDF */}
-        {inputMode === 'pdf' && (
+        ) : (
           <div
-            className={`drop-zone-compact ${isDragging ? 'dragging' : ''} ${openRouterBlocked ? 'disabled' : ''}`}
-            onDragOver={e => { e.preventDefault(); if (!openRouterBlocked) setIsDragging(true); }}
+            className={`upload-dropzone ${isDragging ? 'dragging' : ''}`}
+            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()}
           >
-            <Upload size={28} />
-            <p>{isDragging ? 'Solte o ficheiro!' : 'Arraste o arquivo do manuscrito aqui'}</p>
-            <p className="drop-zone-lead">Formatos suportados: PDF, DOCX, EPUB, RTF, ODT, TXT, MD. A IA extrai o texto e cria um ebook novo (não é ficheiro anexado ao editor).</p>
             <input
-              ref={fileInputRef}
               type="file"
-              accept=".pdf,.docx,.epub,.rtf,.odt,.txt,.md,.markdown"
-              className="hidden-input"
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-              disabled={openRouterBlocked}
+              ref={fileInputRef}
+              className="hidden"
+              accept=".pdf,.docx,.epub,.rtf,.txt,.md,.markdown,.odt"
+              onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
             />
-            <button
-              className="btn-secondary"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={openRouterBlocked}
-            >
-              Selecionar Arquivo (PDF, DOCX, EPUB, RTF, ODT, TXT, MD)
-            </button>
+            <div className="dropzone-content">
+              <div className="dropzone-icon">
+                <Upload size={32} />
+              </div>
+              <h3>Arraste o seu arquivo aqui</h3>
+              <p>Suporta PDF, DOCX, EPUB, RTF, ODT, TXT e Markdown</p>
+              <button className="btn-upload-trigger">Selecionar do computador</button>
+            </div>
           </div>
         )}
       </div>
 
       {/* ── ERRO ─────────────────────────────────────────────────────────── */}
-      {forgeError && forgeStatus === 'error' && (
-        <div className="forge-error-card">
-          <AlertCircle size={18} className="text-red-500" />
-          <div className="error-info">
-            <strong>Ops — algo deu errado</strong>
+      {forgeError && (
+        <div className="forge-error-box">
+          <AlertCircle size={18} />
+          <div className="forge-error-content">
+            <strong>Erro na Forja</strong>
             <p>{forgeError}</p>
+            <button onClick={resetForge} className="btn-retry">Tentar novamente</button>
           </div>
-          <button onClick={resetForge} className="btn-retry">
-            <X size={14} /> Tentar Novamente
-          </button>
         </div>
-      )}
-
-      {/* ── BOTÃO PRINCIPAL ──────────────────────────────────────────────── */}
-      {inputMode === 'paste' && (
-        <button
-          type="button"
-          className="btn-forge-main forge-footer-cta"
-          onClick={handleForge}
-          disabled={openRouterBlocked || pastedText.trim().length < 50}
-          title={openRouterBlocked ? 'Configure sua chave de API na barra lateral para liberar a geração' : undefined}
-        >
-          <Sparkles size={18} />
-          {openRouterBlocked
-            ? 'Configure a chave de API na barra lateral (🔑)'
-            : pastedText.trim().length < 50
-              ? 'Cole o manuscrito acima (mín. 50 caracteres)'
-              : 'Gerar ebook com IA (repetir ação)'}
-        </button>
       )}
     </div>
   );
 };
 
-// ── Tela de Progresso ─────────────────────────────────────────────────────
-interface ForgeProgressProps {
-  status: string;
-  progress: number;
-  detail: { phase: string; current: number; total: number; label: string } | null;
-  onCancel: () => void;
-}
+// ── COMPONENTES AUXILIARES ──────────────────────────────────────────────────
 
-function ForgeProgress({ status, progress, detail, onCancel }: ForgeProgressProps) {
-  const statusLabels: Record<string, string> = {
-    parsing: 'Extraindo texto...',
-    thinking: 'Analisando manuscrito e criando estrutura...',
-    writing: 'Escrevendo com qualidade editorial...',
+const ForgeProgress = ({ status, progress, detail, onCancel }: {
+  status: string; progress: number; detail: any; onCancel: () => void;
+}) => {
+  const labels: Record<string, string> = {
+    parsing: 'Lendo manuscrito...',
+    thinking: 'IA analisando estrutura...',
+    writing: 'Ghostwriter escrevendo capítulos...',
   };
 
   return (
-    <div className="forge-progress-screen">
-      <div className="forge-progress-inner">
-        <div className="forge-spinner">
+    <div className="forge-processing">
+      <div className="processing-card">
+        <div className="processing-loader">
           <Loader2 size={40} className="animate-spin" />
-          <Sparkles size={18} className="spinner-star" />
         </div>
+        <h2>Forjando seu Ebook Premium</h2>
+        <p className="processing-status">{labels[status] || 'Processando...'}</p>
 
-        <h2>{statusLabels[status] || 'Processando...'}</h2>
+        <div className="progress-container">
+          <div className="progress-bar" style={{ width: `${progress}%` }} />
+        </div>
 
         {detail && (
           <div className="progress-detail">
-            <span className="progress-phase">{detail.phase}</span>
-            <span className="progress-label">{detail.label}</span>
-            {detail.total > 1 && (
-              <span className="progress-count">{detail.current} de {detail.total}</span>
-            )}
+            <span className="detail-label">{detail.label}</span>
+            <span className="detail-count">{detail.current} / {detail.total}</span>
           </div>
         )}
 
-        <div className="progress-bar-track">
-          <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
-        </div>
-        <span className="progress-pct">{Math.round(progress)}%</span>
-
-        <p className="progress-tip">
-          {progress < 20 && 'A IA está lendo seu manuscrito completo...'}
-          {progress >= 20 && progress < 30 && 'Estrutura criada. Iniciando a escrita...'}
-          {progress >= 30 && progress < 85 && 'Escrevendo capítulos em paralelo...'}
-          {progress >= 85 && 'Finalizando e montando o ebook...'}
-        </p>
-
-        <button className="btn-cancel" onClick={onCancel}>
-          <X size={14} /> Cancelar
+        <button className="btn-cancel-forge" onClick={onCancel}>
+          <X size={14} /> Cancelar Geração
         </button>
       </div>
     </div>
   );
-}
+};
 
-// ── Tela de Sucesso ────────────────────────────────────────────────────────
-function ForgeSuccess({ onNew }: { onNew: () => void }) {
-  return (
-    <div className="forge-success-screen">
-      <CheckCircle2 size={52} className="success-icon" />
-      <h2>Ebook Pronto!</h2>
-      <p>Seu ebook foi gerado com sucesso. Clique no nome do projeto na barra lateral para visualizar, editar e exportar.</p>
-      <button className="btn-forge-main" onClick={onNew}>
-        <Sparkles size={16} /> Forjar Outro Ebook
-      </button>
+const ForgeSuccess = ({ onNew }: { onNew: () => void }) => (
+  <div className="forge-success">
+    <div className="success-card">
+      <div className="success-icon">
+        <CheckCircle2 size={48} />
+      </div>
+      <h2>Ebook Forjado com Sucesso!</h2>
+      <p>O seu novo ebook já está disponível na lista de projetos à esquerda. Você pode editá-lo, exportar para PDF ou gerar materiais de marketing.</p>
+      <div className="success-actions">
+        <button className="btn-success-primary" onClick={onNew}>
+          <Sparkles size={16} /> Forjar outro ebook
+        </button>
+      </div>
     </div>
-  );
-}
+  </div>
+);
